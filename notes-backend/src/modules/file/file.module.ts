@@ -3,10 +3,12 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { File, FileSchema } from './file.schema';
 import { FileService } from './file.service';
 import { S3Service } from '../../utils/s3.service';
+import { FileController } from './file.controller';
 
 @Module({
   imports: [MongooseModule.forFeature([{ name: File.name, schema: FileSchema }])],
   providers: [FileService, S3Service],
+  controllers: [FileController],
   exports: [FileService, S3Service],
 })
 export class FileModule {}

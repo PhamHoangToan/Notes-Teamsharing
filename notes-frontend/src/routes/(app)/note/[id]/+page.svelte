@@ -19,6 +19,7 @@
   let lastSyncedAt: string | null = null;
   let saveTimer: any;
   let unsubscribe: () => void;
+export let content: string = "";
 
 
   let openCollaborators = false;
@@ -241,7 +242,14 @@
         class="flex-1 border rounded-md overflow-hidden relative"
         style="border-color: var(--note-border);"
       >
-        <Editor {noteId} {provider} {ydoc} on:mentiontrigger={handleMentionTrigger} />
+        <Editor
+  {noteId}
+  {provider}
+  {ydoc}
+  content={note.content}
+  on:mentiontrigger={handleMentionTrigger}
+/>
+
         {#if showMentionDropdown}
           <MentionDropdown onSelect={handleMentionSelect} />
         {/if}

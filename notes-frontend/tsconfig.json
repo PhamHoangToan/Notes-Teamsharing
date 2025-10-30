@@ -1,0 +1,27 @@
+{
+  "extends": "./.svelte-kit/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "moduleResolution": "bundler",
+    // ⚙️ Gợi ý thêm baseUrl để alias $lib hoạt động chuẩn với TypeScript
+    "baseUrl": ".",
+    "paths": {
+      "$lib/*": ["src/lib/*"],
+      "$components/*": ["src/lib/components/*"]
+    }
+  },
+  // 🧩 Bắt buộc thêm include cho file khai báo TipTap của bạn
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.svelte",
+    "src/**/*.d.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

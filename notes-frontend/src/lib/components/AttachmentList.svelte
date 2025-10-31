@@ -24,29 +24,24 @@
       {#each files as f}
         <div class="flex items-center justify-between border-b py-1.5">
           {#if f.mimeType?.startsWith("image/")}
-            <!-- ✅ Nếu là ảnh: hiển thị thumbnail nhỏ -->
-            <a
-              href={f.url || f.s3Url?.url}
-              target="_blank"
-              class="flex items-center gap-2 hover:opacity-80 transition"
-            >
-              <img
-                src={f.url || f.s3Url?.url}
-                alt={f.fileName}
-                class="w-6 h-6 object-cover rounded-sm border"
-              />
-              <span class="truncate max-w-[150px]">{f.fileName}</span>
-            </a>
-          {:else}
-            <!-- 🗂 Nếu không phải ảnh -->
-            <a
-              href={f.url || f.s3Url?.url}
-              target="_blank"
-              class="text-blue-600 hover:underline truncate max-w-[200px]"
-            >
-              {f.fileName}
-            </a>
-          {/if}
+  <a href={f.url} target="_blank" class="flex items-center gap-2">
+    <img
+      src={f.url}
+      alt={f.fileName}
+      class="w-12 h-12 object-cover rounded border"
+    />
+    <span class="text-blue-600 hover:underline">{f.fileName}</span>
+  </a>
+{:else}
+  <a
+    href={f.url}
+    target="_blank"
+    class="text-blue-600 hover:underline truncate max-w-[200px]"
+  >
+    {f.fileName}
+  </a>
+{/if}
+
 
           <span class="text-gray-500 text-xs ml-2 whitespace-nowrap">
             {(f.fileSize / 1024).toFixed(1)} KB

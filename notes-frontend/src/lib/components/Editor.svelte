@@ -10,14 +10,19 @@
   import { noteStore } from "$lib/stores/noteStore";
   import { get } from "svelte/store";
 
+  // ==================== PROPS ====================
   export let noteId: string;
   export let ydoc: any;
   export let provider: any;
   export let content: string = "";
+  export let note: any = null; // 👈 thêm prop note (có createdAt, title, ...)
 
+  // ==================== STATE ====================
   let editor: TipTapEditor | null = null;
   let editorContainer: HTMLElement;
   let fileInput: HTMLInputElement;
+  let noteImages: { url: string; fileName: string; mimeType: string; createdAt: string }[] = [];
+  let timelineItems: { type: "text" | "image"; createdAt: string; html?: string; url?: string; fileName?: string }[] = [];
 
   const username =
     localStorage.getItem("username") ||
@@ -26,35 +31,92 @@
   const trpc = get(noteStore).trpc;
   const dispatch = createEventDispatcher();
 
-  // ===================== KHỞI TẠO EDITOR =====================
-  onMount(() => {
-    console.log("🧠 [Editor] Mounting TipTap (noteId):", noteId);
+  // ==================== LOAD IMAGES ====================
+  async function loadNoteImages() {
+    try {
+      const apiUrl =
+        import.meta.env.PUBLIC_API_URL?.replace("/trpc", "") ||
+        "http://localhost:4000";
+
+      const res = await fetch(`${apiUrl}/file/${noteId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      noteImages = (data || [])
+        .filter((f: any) => f.mimeType?.startsWith("image/"))
+        .map((f: any) => {
+          const url =
+            typeof f.s3Url === "string"
+              ? f.s3Url
+              : f.s3Url?.url || f.url || null;
+
+          return {
+            url,
+            fileName: f.fileName,
+            mimeType: f.mimeType,
+            createdAt: f.createdAt || new Date().toISOString(), // 👈 đảm bảo có thời gian
+          };
+        })
+        .filter((img) => !!img.url);
+
+      console.log("🖼️ [Images] Loaded", noteImages.length, "ảnh:", noteImages);
+    } catch (err) {
+      console.error("❌ [Images] Lỗi tải danh sách ảnh:", err);
+      noteImages = [];
+    }
+  }
+
+  // ==================== MERGE NOTE + IMAGES ====================
+  async function loadNoteContent() {
+    await loadNoteImages();
+
+    const noteContent = {
+      type: "text",
+      createdAt: note?.createdAt || new Date().toISOString(),
+      html: content,
+    };
+
+    timelineItems = [
+      noteContent,
+      ...noteImages.map((img) => ({
+        type: "image",
+        createdAt: img.createdAt,
+        url: img.url,
+        fileName: img.fileName,
+      })),
+    ].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    console.log("🧩 [Timeline] Combined items:", timelineItems);
+  }
+
+  // ==================== INIT EDITOR ====================
+  onMount(async () => {
+    console.log("🧠 [Editor] Mounting TipTap:", noteId);
+    await loadNoteContent(); // 👈 gọi hàm mới (đã gộp nội dung + ảnh)
 
     if (!ydoc || !provider) {
-      console.error(" [Editor] Missing ydoc/provider props!");
+      console.error("⚠️ [Editor] Missing ydoc/provider props!");
       return;
     }
 
     provider.on("status", (e: any) => {
-      console.log(" [Yjs WebRTC] Connection status:", e.status);
+      console.log("🔌 [Yjs WebRTC] Connection status:", e.status);
     });
 
     try {
       editor = new TipTapEditor({
         element: editorContainer,
         extensions: [
-          // ✏️ Cơ bản
           StarterKit.configure({ history: false }),
-
-          // 🖼️ Cho phép hiển thị ảnh & link
           Image,
           Link.configure({
             openOnClick: true,
             autolink: true,
             linkOnPaste: true,
           }),
-
-          // 🔄 Cộng tác realtime (Yjs)
           Collaboration.configure({ document: ydoc }),
           CollaborationCursor.configure({
             provider,
@@ -63,8 +125,6 @@
               color: "#" + Math.floor(Math.random() * 16777215).toString(16),
             },
           }),
-
-          // 💬 Mention
           Mention.configure({
             HTMLAttributes: { class: "mention" },
             suggestion: {
@@ -81,7 +141,7 @@
                     })) ?? []
                   );
                 } catch (err) {
-                  console.error(" [Mention Error]:", err);
+                  console.error("💬 [Mention Error]:", err);
                   return [];
                 }
               },
@@ -138,7 +198,6 @@
             },
           }),
         ],
-
         autofocus: true,
         content: "<p>Đang tải nội dung...</p>",
         onUpdate: ({ editor }) => {
@@ -147,27 +206,20 @@
         },
       });
 
-      console.log(" [Editor] TipTap initialized!");
+      console.log("✅ [Editor] TipTap initialized!");
       if (content && editor) {
-        console.log(
-          "🪄 [Editor] Set content from prop:",
-          content.slice(0, 200)
-        );
         editor.commands.setContent(content);
       }
 
-      // Khi người dùng gõ @ → phát sự kiện ra ngoài
       editor.on("keydown", (event: KeyboardEvent) => {
         if (event.key === "@") dispatch("mentiontrigger");
       });
     } catch (err) {
-      console.error(" [Editor] Error initializing TipTap:", err);
+      console.error("❌ [Editor] Error initializing TipTap:", err);
     }
-
-    return cleanupEditor;
   });
 
-  // ===================== UPLOAD FILE =====================
+  // ==================== FILE UPLOAD ====================
   async function handleFileUpload(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -181,18 +233,7 @@
     try {
       const apiUrl =
         import.meta.env.PUBLIC_API_URL?.replace("/trpc", "") ||
-        "http://localhost:4000"; // fallback
-
-      console.group("📤 [Upload] Bắt đầu upload file...");
-      console.log("🧾 noteId:", noteId);
-      console.log("👤 uploaderId:", user.id);
-      console.log("📎 file:", {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-      });
-      console.log("🌐 API URL:", `${apiUrl}/file/upload`);
-      console.groupEnd();
+        "http://localhost:4000";
 
       const res = await fetch(`${apiUrl}/file/upload`, {
         method: "POST",
@@ -200,58 +241,49 @@
       });
 
       const uploaded = await res.json();
-      console.group("📦 [Upload] Kết quả response:");
-      console.log("🧩 Raw response object:", uploaded);
-      console.log("🔗 url:", uploaded?.url);
-      console.log("🔗 s3Url:", uploaded?.s3Url);
-      console.log("📄 fileName:", uploaded?.fileName);
-      console.log("📜 mimeType:", uploaded?.mimeType);
-      console.groupEnd();
+      const imageUrl =
+        typeof uploaded.url === "object"
+          ? uploaded.url?.url
+          : uploaded.url || uploaded.s3Url?.url;
 
-      if (uploaded?.url || uploaded?.s3Url?.url) {
-        const imageUrl = uploaded.url || uploaded.s3Url?.url;
-        const fileName = uploaded.fileName || file.name;
-        const mimeType = uploaded.mimeType || file.type;
+      if (!imageUrl) return;
 
-        console.group("🖼️ [Insert Content]");
-        console.log("🔗 imageUrl:", imageUrl);
-        console.log("📄 fileName:", fileName);
-        console.log("📜 mimeType:", mimeType);
-        console.groupEnd();
+      const fileName = uploaded.fileName || file.name;
+      const mimeType = uploaded.mimeType || file.type;
 
-        if (mimeType.startsWith("image/")) {
-          editor?.chain().focus().setImage({ src: imageUrl, alt: fileName }).run();
-          console.log("✅ Đã chèn ảnh vào editor (thumbnail nhỏ)!");
-        } else {
-          editor?.commands.insertContent(
+      if (mimeType.startsWith("image/")) {
+        editor?.chain().focus().setImage({ src: imageUrl, alt: fileName }).run();
+        console.log("✅ Đã chèn ảnh vào editor!");
+      } else {
+        editor
+          ?.commands.insertContent(
             `<a href="${imageUrl}" target="_blank" rel="noopener">${fileName}</a>`
           );
-          console.log(" Đã chèn link file vào editor!");
-        }
-      } else {
-        console.warn(" Không tìm thấy URL hợp lệ trong response:", uploaded);
       }
+
+      // Reload timeline sau upload
+      await loadNoteContent();
     } catch (err) {
-      console.error(" [Upload] Lỗi upload file:", err);
+      console.error("❌ [Upload] Lỗi upload file:", err);
       alert("Không thể upload file.");
     }
   }
 
-  // ===================== CLEANUP =====================
+  // ==================== CLEANUP ====================
   function cleanupEditor() {
     console.log("🧹 [Editor] Destroying TipTap instance...");
     try {
       editor?.destroy?.();
       editor = null;
     } catch (err) {
-      console.error(" [Editor] Error destroying editor:", err);
+      console.error("⚠️ [Editor] Error destroying editor:", err);
     }
   }
 
   onDestroy(cleanupEditor);
 </script>
 
-<!-- ===================== UI ===================== -->
+<!-- ==================== UI ==================== -->
 <div class="flex gap-2 items-center mb-2">
   <button
     type="button"
@@ -269,82 +301,45 @@
   />
 </div>
 
-<div
-  bind:this={editorContainer}
-  class="note-editor-container prose max-w-none p-4 border rounded-md focus:outline-none transition-colors duration-300"
-  style="
-    background-color: var(--note-bg);
-    color: var(--text-color);
-    border-color: var(--note-border);
-  "
-></div>
-
+<div class="mt-4 space-y-6">
+  {#each timelineItems as item}
+    {#if item.type === "text"}
+      <div
+        class="note-timeline-text border rounded-md p-4"
+        style="border-color: var(--note-border); background-color: var(--note-bg); color: var(--text-color);"
+      >
+        <!-- 👇 đây là vùng nhập thật -->
+        <div bind:this={editorContainer}></div>
+        <p class="text-xs text-gray-500 mt-2">
+          🕒 {new Date(item.createdAt).toLocaleString("vi-VN")}
+        </p>
+      </div>
+    {:else if item.type === "image"}
+      <div class="note-timeline-image flex flex-col items-start border rounded-md p-2">
+        <img
+          src={item.url}
+          alt={item.fileName}
+          class="max-w-[300px] max-h-[200px] object-cover rounded-md border border-gray-300 dark:border-gray-600 cursor-pointer hover:scale-[1.02] transition-transform"
+          on:click={() => window.open(item.url, "_blank")}
+        />
+        <p class="text-xs text-gray-500 mt-1">
+          {item.fileName} — 🕒 {new Date(item.createdAt).toLocaleString("vi-VN")}
+        </p>
+      </div>
+    {/if}
+  {/each}
+</div>
 
 
 <style>
-  /* .ProseMirror {
-    outline: none;
+  .note-editor-container {
     min-height: 400px;
-    background-color: var(--note-bg);
-    color: var(--note-text-color);
-  } */
-
-  /* 👇 Cuộn trong vùng hiển thị nội dung */
-.note-editor-container {
-  min-height: 400px;
-  max-height: 70vh;
-  overflow-y: auto;
-  position: relative;
-  scroll-behavior: smooth;
-  padding-right: 8px; /* tránh che scrollbar */
-}
-
-/* 👇 Thanh cuộn đẹp */
-.note-editor-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.note-editor-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.note-editor-container::-webkit-scrollbar-thumb {
-  background-color: rgba(120, 120, 120, 0.4);
-  border-radius: 4px;
-  transition: background-color 0.3s;
-}
-
-.note-editor-container:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(120, 120, 120, 0.7);
-}
-
-.ProseMirror {
-  outline: none;
-  background-color: var(--note-bg);
-  color: var(--note-text-color);
-  min-height: 400px;
-  padding-right: 8px;
-}
-
-
-/* Thanh cuộn mảnh và tinh tế */
-.ProseMirror::-webkit-scrollbar {
-  width: 8px;
-}
-
-.ProseMirror::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ProseMirror::-webkit-scrollbar-thumb {
-  background-color: rgba(120, 120, 120, 0.4);
-  border-radius: 4px;
-  transition: background-color 0.3s;
-}
-
-.ProseMirror:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(120, 120, 120, 0.7);
-}
+    max-height: 70vh;
+    overflow-y: auto;
+    position: relative;
+    scroll-behavior: smooth;
+    padding-right: 8px;
+  }
 
   .mention-popup {
     background-color: var(--note-bg);
@@ -354,9 +349,6 @@
     border-radius: 6px;
     padding: 4px;
     width: 160px;
-    transition:
-      background-color 0.3s,
-      color 0.3s;
     z-index: 9999;
   }
 
@@ -367,58 +359,30 @@
   }
 
   .mention-item:hover {
-    background-color: color-mix(
-      in srgb,
-      var(--note-bg) 80%,
-      var(--note-text-color)
-    );
+    background-color: color-mix(in srgb, var(--note-bg) 80%, var(--note-text-color));
   }
+  /* Giảm kích thước ảnh trong timeline */
+.note-timeline-image img {
+  max-width: 300px; /* 👈 thay đổi từ 100% thành 300px để ảnh nhỏ hơn */
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-top: 4px;
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
 
-  .ProseMirror img {
-    max-width: 150px;
-    max-height: 150px;
-    width: auto;
-    height: auto;
-    border-radius: 6px;
-    object-fit: cover;
-    display: inline-block;
-  }
-  .ProseMirror img,
-  .ProseMirror .note-image {
-    max-width: 150px;
-    max-height: 150px;
-    width: auto;
-    height: auto;
-    border-radius: 6px;
-    object-fit: cover;
-    display: inline-block;
-    margin: 4px;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-  }
+/* Hiệu ứng hover nhẹ */
+.note-timeline-image img:hover {
+  transform: scale(1.05);
+}
 
-  .ProseMirror img:hover,
-  .ProseMirror .note-image:hover {
-    transform: scale(1.05);
-  }
-  :global(.ProseMirror img),
-  :global(.ProseMirror .note-image),
-  :global(.note-editor-container img) {
-    max-width: 70px !important; /* 👈 Kích thước ảnh nhỏ */
-    max-height: 70px !important;
-    width: auto !important;
-    height: auto !important;
-    display: inline-block;
-    border-radius: 8px;
-    object-fit: cover;
-    margin: 4px;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-  }
+/* Canh lề ảnh & mô tả */
+.note-timeline-image {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
 
-  :global(.ProseMirror img:hover),
-  :global(.ProseMirror .note-image:hover),
-  :global(.note-editor-container img:hover) {
-    transform: scale(1.05);
-  }
 </style>

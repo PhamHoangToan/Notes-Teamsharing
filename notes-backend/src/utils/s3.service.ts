@@ -13,7 +13,7 @@ export class S3Service {
     this.region = this.config.get<string>("S3_REGION") as string;
     this.bucket = this.config.get<string>("S3_BUCKET") as string;
 
-    console.log(" [S3Service] Initializing S3 Client...");
+    console.log("🚀 [S3Service] Initializing S3 Client...");
     console.log("   - Bucket:", this.bucket);
     console.log("   - Region:", this.region);
 
@@ -63,6 +63,4 @@ export class S3Service {
       throw err;
     }
   }
-
-  
 }

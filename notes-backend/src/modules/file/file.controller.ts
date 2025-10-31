@@ -1,10 +1,13 @@
 import {
   Controller,
+  Get,
   Post,
+  Param,
   UseInterceptors,
   UploadedFile,
   Body,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FileService } from './file.service';
@@ -15,6 +18,63 @@ export class FileController {
 
   constructor(private readonly fileService: FileService) {}
 
+  // ============================================================
+  // 🔹 Lấy danh sách file theo noteId (sắp xếp theo thời gian upload)
+  // ============================================================
+  @Get(':noteId')
+  async getFilesByNoteId(@Param('noteId') noteId: string) {
+    this.logger.log(`📂 [GET] Yêu cầu lấy danh sách file cho noteId=${noteId}`);
+
+    if (!noteId) {
+      this.logger.warn('⚠️ Thiếu noteId trong request');
+      throw new BadRequestException('Thiếu noteId');
+    }
+
+    try {
+      const files = await this.fileService.getFilesByNoteId(noteId);
+
+      if (!files?.length) {
+        this.logger.warn(`⚠️ Không tìm thấy file nào cho noteId=${noteId}`);
+        return [];
+      }
+
+      // 🔽 Sắp xếp file theo thời gian tạo (mới nhất trước)
+      const sortedFiles = files.sort(
+        (a: any, b: any) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
+      this.logger.log(`✅ Trả về ${sortedFiles.length} file cho noteId=${noteId}`);
+      sortedFiles.forEach((f, i) =>
+        this.logger.debug(
+          `🧾 [${i + 1}] ${f.fileName} | ${f.mimeType} | ${f.createdAt}`,
+        ),
+      );
+
+      // Trả về đầy đủ dữ liệu cần thiết cho frontend
+      return sortedFiles.map((f) => ({
+        _id: f._id,
+        fileName: f.fileName,
+        mimeType: f.mimeType,
+        noteId: f.noteId,
+        uploaderId: f.uploaderId,
+        s3Url: f.s3Url?.url || f.s3Url || null,
+        createdAt: f.createdAt,
+      }));
+    } catch (err) {
+      this.logger.error(
+        `❌ [Controller] Lỗi khi lấy danh sách file cho noteId=${noteId}: ${
+          err.message || err
+        }`,
+      );
+      this.logger.debug(err.stack);
+      throw err;
+    }
+  }
+
+  // ============================================================
+  // 🔹 Upload file
+  // ============================================================
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async upload(
@@ -23,46 +83,44 @@ export class FileController {
     @Body('uploaderId') uploaderId: string,
   ) {
     this.logger.log('📥 [UPLOAD] Nhận request upload file...');
-    this.logger.debug(`🧾 noteId = ${noteId || '(none)'}`);
-    this.logger.debug(`👤 uploaderId = ${uploaderId || '(none)'}`);
+    this.logger.log(`🧾 noteId: ${noteId}`);
+    this.logger.log(`👤 uploaderId: ${uploaderId}`);
 
     if (!file) {
-      this.logger.error('❌ Không nhận được file trong request!');
-      throw new Error('Không có file được gửi lên');
+      this.logger.error('❌ Không nhận được file upload!');
+      throw new BadRequestException('Không có file nào được gửi lên');
     }
 
-    this.logger.log(`📎 file.originalname = ${file.originalname}`);
-    this.logger.log(`📦 file.mimetype = ${file.mimetype}`);
-    this.logger.log(`📏 file.size = ${file.size} bytes`);
-
     try {
-      // === Upload lên S3 và lưu DB ===
       const result = await this.fileService.uploadFile(noteId, uploaderId, file);
 
-      this.logger.log('✅ [UPLOAD] Upload thành công!');
-      this.logger.debug(`🪣 S3 URL: ${result?.url || result?.s3Url?.url}`);
-      this.logger.debug(`📁 File ID (DB): ${result?._id || '(chưa lưu DB)'}`);
-
-      // === Chuẩn hóa response để frontend xử lý dễ dàng ===
       const response = {
-        success: true,
         message: 'Upload thành công',
         uploadedAt: new Date().toISOString(),
-        fileName: result.fileName || file.originalname,
-        mimeType: result.mimeType || file.mimetype,
-        size: result.fileSize || file.size,
-        url: result.url || result?.s3Url?.url, // ✅ luôn có key 'url'
-        key: result.key || result?.s3Url?.key,
-        noteId,
-        uploaderId,
-        _id: result._id || null,
+        url:
+          result?.url?.url ||
+          result?.s3Url?.url ||
+          result?.url ||
+          result?.s3Url ||
+          null,
+        fileName: result?.fileName || file.originalname,
+        mimeType: result?.mimeType || file.mimetype,
+        s3Url: result?.s3Url?.url || result?.s3Url || null,
+        _id: result?._id || null,
+        createdAt: result?.createdAt || new Date().toISOString(),
       };
 
-      this.logger.verbose(`📤 [UPLOAD RESPONSE]: ${JSON.stringify(response, null, 2)}`);
+      this.logger.log('✅ [UPLOAD] Upload thành công!');
+      this.logger.debug(`🪣 S3 URL: ${response.s3Url}`);
+      this.logger.debug(`📁 File ID (DB): ${response._id}`);
+      this.logger.debug(`📜 fileName: ${response.fileName}`);
 
       return response;
     } catch (err) {
-      this.logger.error('❌ [UPLOAD] Lỗi khi upload file:', err.stack || err);
+      this.logger.error(
+        `❌ [UPLOAD] Lỗi khi upload file: ${err.message || err}`,
+      );
+      this.logger.debug(err.stack);
       throw err;
     }
   }

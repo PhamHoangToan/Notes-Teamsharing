@@ -55,8 +55,15 @@ getById: t.procedure
 
     //  Restore version
     restoreVersion: t.procedure
-      .input(z.object({ noteId: z.string(), historyId: z.string() }))
-      .mutation(({ input }) => noteService.restoreVersion(input.noteId, input.historyId)),
+  .input(z.object({
+    noteId: z.string(),
+    historyId: z.string(),
+    restorerId: z.string().optional(),
+  }))
+  .mutation(async ({ input }) => {
+    return noteService.restoreVersion(input.noteId, input.historyId, input.restorerId);
+  }),
+
       listHistory: t.procedure
   .input(z.object({ noteId: z.string() }))
   .query(({ input }) => noteService.getHistoryByNote(input.noteId)),

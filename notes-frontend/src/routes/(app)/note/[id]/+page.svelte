@@ -19,13 +19,11 @@
   let lastSyncedAt: string | null = null;
   let saveTimer: any;
   let unsubscribe: () => void;
-export let content: string = "";
-
+  export let content: string = "";
 
   let openCollaborators = false;
   let userIdToAdd = "";
   let roleToAdd: "viewer" | "editor" = "viewer";
-
 
   let showMentionDropdown = false;
 
@@ -59,7 +57,10 @@ export let content: string = "";
 
     try {
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const res = await trpc.note.getById.query({ noteId: id,viewerId: currentUser?.id, });
+      const res = await trpc.note.getById.query({
+        noteId: id,
+        viewerId: currentUser?.id,
+      });
       if (!res) throw new Error("Note not found");
       note = res;
 
@@ -77,18 +78,23 @@ export let content: string = "";
         fragment.insert(0, [paragraph]);
       }
 
-      
       fragment.observeDeep(() => scheduleSave());
-
 
       provider.on("status", (e: any) => {
         syncing = e.status === "connected";
         if (syncing) {
-          lastSyncedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          lastSyncedAt = new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
         }
       });
 
-      noteStore.setCurrentNote({ id, title: note.title, content: note.content || "" });
+      noteStore.setCurrentNote({
+        id,
+        title: note.title,
+        content: note.content || "",
+      });
     } catch (err) {
       console.error(" [NotePage] Load note error:", err);
     } finally {
@@ -114,7 +120,10 @@ export let content: string = "";
         content: htmlContent,
         authorId: currentUser?.id,
       });
-      lastSyncedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      lastSyncedAt = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
       console.log(" [AutoSave] Saved successfully");
     } catch (err) {
       console.error(" [AutoSave] Failed:", err);
@@ -125,7 +134,10 @@ export let content: string = "";
     if (!noteId || !note?.title) return;
     try {
       await trpc.note.update.mutate({ noteId, title: note.title });
-      lastSyncedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      lastSyncedAt = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     } catch (err) {
       console.error(" [saveTitleNow] Failed:", err);
     }
@@ -191,7 +203,6 @@ export let content: string = "";
     class="p-6 h-screen overflow-y-auto flex flex-col gap-4 transition-colors duration-300"
     style="background-color: var(--note-bg); color: var(--note-text-color);"
   >
-  
     <div class="flex items-center justify-between mb-3">
       <input
         type="text"
@@ -236,31 +247,34 @@ export let content: string = "";
       </div>
     </div>
 
-  
     {#if ydoc && provider}
-      <div
-        class="flex-1 border rounded-md overflow-hidden relative"
-        style="border-color: var(--note-border);"
-      >
-        <Editor
-  {noteId}
-  {provider}
-  {ydoc}
-  content={note.content}
-  on:mentiontrigger={handleMentionTrigger}
-/>
+  <div
+    class="flex-1 border rounded-md overflow-hidden relative"
+    style="border-color: var(--note-border);"
+  >
+    <div
+      class="note-scroll-area overflow-y-auto max-h-[70vh] p-2"
+      style="scrollbar-width: thin;"
+    >
+      <Editor
+        {noteId}
+        {provider}
+        {ydoc}
+        content={note.content}
+        on:mentiontrigger={handleMentionTrigger}
+      />
+    </div>
 
-        {#if showMentionDropdown}
-          <MentionDropdown onSelect={handleMentionSelect} />
-        {/if}
-      </div>
-    {:else}
-      <div class="flex-1 flex items-center justify-center text-gray-400 italic">
-        Đang khởi tạo trình soạn thảo...
-      </div>
+    {#if showMentionDropdown}
+      <MentionDropdown onSelect={handleMentionSelect} />
     {/if}
+  </div>
+{:else}
+  <div class="flex-1 flex items-center justify-center text-gray-400 italic">
+    Đang khởi tạo trình soạn thảo...
+  </div>
+{/if}
 
-   
     <button
       class="bg-gray-700 text-white px-3 py-1 rounded self-start"
       on:click={() => (openCollaborators = true)}
@@ -268,60 +282,81 @@ export let content: string = "";
       👥 Cấp quyền
     </button>
 
-   {#if openCollaborators}
-  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 transition">
-    <div
-      class="rounded-lg p-6 shadow-xl w-96 transition-colors duration-300"
-      style="
+    {#if openCollaborators}
+      <div
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 transition"
+      >
+        <div
+          class="rounded-lg p-6 shadow-xl w-96 transition-colors duration-300"
+          style="
         background-color: var(--modal-bg, var(--sidebar-bg));
         color: var(--text-color, var(--sidebar-text-color));
       "
-    >
-      <h3 class="text-lg font-semibold mb-4">Phân quyền người dùng</h3>
+        >
+          <h3 class="text-lg font-semibold mb-4">Phân quyền người dùng</h3>
 
-      <input
-        type="email"
-        bind:value={userIdToAdd}
-        placeholder="Nhập email người dùng..."
-        class="border rounded px-3 py-2 w-full mb-3 transition-colors duration-300"
-        style="
+          <input
+            type="email"
+            bind:value={userIdToAdd}
+            placeholder="Nhập email người dùng..."
+            class="border rounded px-3 py-2 w-full mb-3 transition-colors duration-300"
+            style="
           border-color: var(--border-color, #ccc);
           background-color: var(--input-bg, transparent);
           color: var(--text-color, inherit);
         "
-      />
+          />
 
-      <select
-        bind:value={roleToAdd}
-        class="border rounded px-3 py-2 w-full mb-4 transition-colors duration-300"
-        style="
+          <select
+            bind:value={roleToAdd}
+            class="border rounded px-3 py-2 w-full mb-4 transition-colors duration-300"
+            style="
           border-color: var(--border-color, #ccc);
           background-color: var(--input-bg, transparent);
           color: var(--text-color, inherit);
         "
-      >
-        <option value="viewer">👁 Viewer (chỉ xem)</option>
-        <option value="editor">✏️ Editor (chỉnh sửa)</option>
-      </select>
+          >
+            <option value="viewer">👁 Viewer (chỉ xem)</option>
+            <option value="editor">✏️ Editor (chỉnh sửa)</option>
+          </select>
 
-      <button
-        class="px-4 py-2 rounded w-full font-semibold transition-colors duration-200"
-        style="
+          <button
+            class="px-4 py-2 rounded w-full font-semibold transition-colors duration-200"
+            style="
           background-color: var(--primary-color, #2563eb);
           color: var(--button-text, white);
         "
-        on:click={addCollaborator}
-      >
-        Cấp quyền
-      </button>
-    </div>
-  </div>
-{/if}
+            on:click={addCollaborator}
+          >
+            Cấp quyền
+          </button>
+        </div>
+      </div>
+    {/if}
 
-
-  
     <CommentList {noteId} />
   </div>
 {:else}
   <p class="text-center text-gray-400 mt-10">❌ Không tìm thấy ghi chú</p>
 {/if}
+<style>
+  .note-scroll-area {
+    overflow-y: auto;
+    max-height: 70vh;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+  }
+
+  .note-scroll-area::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .note-scroll-area::-webkit-scrollbar-thumb {
+    background-color: rgba(150, 150, 150, 0.4);
+    border-radius: 8px;
+  }
+
+  .note-scroll-area::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(150, 150, 150, 0.6);
+  }
+</style>

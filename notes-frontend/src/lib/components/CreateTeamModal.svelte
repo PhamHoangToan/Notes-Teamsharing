@@ -47,37 +47,53 @@
 </script>
 
 {#if open}
-  <div class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 w-96 shadow-lg">
+  <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div
+      class="rounded-xl p-6 w-96 shadow-lg transition-colors duration-300"
+      style="
+        background-color: var(--modal-bg, #1e1e1e);
+        color: var(--modal-text, #f5f5f5);
+      "
+    >
       <h2 class="text-xl font-semibold mb-4">Tạo Team Library</h2>
 
-      <label class="block mb-2 text-sm font-medium text-gray-600">Tên team</label>
+      <label class="block mb-2 text-sm font-medium opacity-90">Tên team</label>
       <input
-        class="w-full border rounded-md px-3 py-2 mb-3 focus:ring focus:ring-blue-100"
+        class="w-full border rounded-md px-3 py-2 mb-3 focus:ring-2 focus:ring-blue-500 outline-none transition"
         bind:value={name}
         placeholder="VD: Product Design Team"
+        style="
+          border-color: var(--border-color, #555);
+          background-color: var(--input-bg, #2b2b2b);
+          color: var(--text-color, #fff);
+        "
       />
 
-      <label class="block mb-2 text-sm font-medium text-gray-600">Mô tả</label>
+      <label class="block mb-2 text-sm font-medium opacity-90">Mô tả</label>
       <textarea
-        class="w-full border rounded-md px-3 py-2 mb-4 focus:ring focus:ring-blue-100"
+        class="w-full border rounded-md px-3 py-2 mb-4 focus:ring-2 focus:ring-blue-500 outline-none transition"
         bind:value={description}
         placeholder="Mô tả ngắn gọn về team..."
+        style="
+          border-color: var(--border-color, #555);
+          background-color: var(--input-bg, #2b2b2b);
+          color: var(--text-color, #fff);
+        "
       ></textarea>
 
       {#if error}
-        <p class="text-red-500 text-sm mb-2">{error}</p>
+        <p class="text-red-400 text-sm mb-2">{error}</p>
       {/if}
 
       <div class="flex justify-end gap-2">
         <button
-          class="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200"
+          class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-700 text-white"
           on:click={() => (open = false)}
         >
           Hủy
         </button>
         <button
-          class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+          class="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
           on:click={createTeam}
           disabled={creating}
         >
@@ -87,3 +103,4 @@
     </div>
   </div>
 {/if}
+

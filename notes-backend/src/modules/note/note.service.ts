@@ -338,40 +338,87 @@ async getHistoryByNote(noteId: string) {
 
   // Add mention/comment
   async addComment(
-    noteId: string,
-    authorId: string,
-    text: string,
-    type: 'comment' | 'mention',
-    range?: any,
-    mentionedUserId?: string
-  ) {
-    const comment = await this.commentModel.create({
+  noteId: string,
+  authorId: string,
+  text: string,
+  type: 'comment' | 'mention' = 'comment',
+  range?: any,
+  mentionedUserId?: string,
+) {
+  // 1️⃣ Tạo comment
+  const comment = await this.commentModel.create({
+    noteId,
+    authorId,
+    text,
+    type,
+    range,
+    createdAt: new Date(),
+  });
+
+  // 2️⃣ Nếu là mention trực tiếp được chọn (dropdown)
+  if (type === 'mention' && mentionedUserId) {
+    await this.noteModel.updateOne(
+      { _id: noteId },
+      { $addToSet: { mentions: mentionedUserId } },
+    );
+
+    this.logger.log(
+      ` [addComment] Gửi thông báo mention trực tiếp tới userId=${mentionedUserId}`,
+    );
+
+    await this.notifService.sendMention({
       noteId,
-      authorId,
-      text,
-      type,
-      range,
-      createdAt: new Date(),
+      mentionedUserId,
+      byUserId: authorId,
     });
-
-    if (type === 'mention' && mentionedUserId) {
-      await this.noteModel.updateOne(
-        { _id: noteId },
-        { $addToSet: { mentions: mentionedUserId } }
-      );
-
-      this.logger.log(
-        ` [addComment] Gửi thông báo mention tới userId=${mentionedUserId}`
-      );
-      await this.notifService.sendMention({
-        noteId,
-        mentionedUserId,
-        byUserId: authorId,
-      });
-    }
-
-    return comment;
   }
+
+  // 3️⃣ Nếu là comment bình thường nhưng có chứa "@username" trong text
+  if (type === 'comment' && text.includes('@')) {
+    const usernames = Array.from(text.matchAll(/@([a-zA-Z0-9_]+)/g)).map(
+      (m) => m[1],
+    );
+
+    if (usernames.length > 0) {
+      this.logger.log(
+        ` [addComment] Phát hiện mention trong comment: ${usernames.join(', ')}`,
+      );
+
+      for (const username of usernames) {
+        const mentionedUser = await this.noteModel.db
+          .collection('users')
+          .findOne({
+  username: { $regex: `^${username.trim()}$`, $options: 'i' },
+});
+
+
+        if (!mentionedUser) {
+          this.logger.warn(
+            ` [addComment] Không tìm thấy user '${username}'`,
+          );
+          continue;
+        }
+
+        await this.noteModel.updateOne(
+          { _id: noteId },
+          { $addToSet: { mentions: mentionedUser._id.toString() } },
+        );
+
+        await this.notifService.sendMention({
+          noteId,
+          mentionedUserId: mentionedUser._id.toString(),
+          byUserId: authorId,
+        });
+
+        this.logger.log(
+          ` [addComment] Gửi thông báo mention (từ comment) cho ${username}`,
+        );
+      }
+    }
+  }
+
+  return comment;
+}
 
   //  Get comments of note
   async getComments(noteId: string) {
@@ -385,12 +432,12 @@ async update(noteId: string, data: any) {
   const note = await this.noteModel.findById(noteId);
   if (!note) throw new Error('Note not found');
 
-  // Nếu có nội dung mới → ghi vào lịch sử thay đổi
+  // ======================== GHI LỊCH SỬ ========================
   if (typeof data.content === 'string') {
     const oldContent = note.content || '';
     const newContent = data.content;
 
-    //  Kiểm tra nếu nội dung thực sự thay đổi
+    // Chỉ ghi lịch sử nếu nội dung thay đổi
     if (oldContent.trim() !== newContent.trim()) {
       const dmp = new diff_match_patch();
       const diff = dmp.diff_main(oldContent, newContent);
@@ -404,61 +451,79 @@ async update(noteId: string, data: any) {
           diff,
         });
         this.logger.log(
-          `[NoteService.update] Đã lưu lịch sử cho noteId=${noteId}, editorId=${data.authorId}`,
+          `[NoteService.update] ✅ Lưu lịch sử cho noteId=${noteId}, editorId=${data.authorId}`,
         );
       } else {
         this.logger.warn(
-          ` [NoteService.update] Bỏ qua lưu lịch sử vì không có authorId (noteId=${noteId})`,
+          `[NoteService.update] ⚠️ Bỏ qua lưu lịch sử vì thiếu authorId (noteId=${noteId})`,
         );
       }
     } else {
-      this.logger.verbose(`ℹ[NoteService.update] Nội dung không thay đổi, bỏ qua lịch sử.`);
+      this.logger.verbose(
+        `ℹ [NoteService.update] Nội dung không thay đổi, bỏ qua lưu lịch sử.`,
+      );
     }
   }
 
-  // Cập nhật note hiện tại
-  const updatedNote = await this.noteModel.findByIdAndUpdate(noteId, {
-    ...data,
-    updatedAt: new Date(),
-  }, { new: true });
+  // ======================== CẬP NHẬT NOTE ========================
+  const updatedNote = await this.noteModel.findByIdAndUpdate(
+    noteId,
+    {
+      ...data,
+      updatedAt: new Date(),
+    },
+    { new: true },
+  );
+  // ======================== XỬ LÝ TAG MỚI TRONG NOTE ========================
+if (typeof data.content === 'string' && data.content.includes('@')) {
+  const $ = cheerio.load(data.content);
+  const text = $.text();
+  const usernames = Array.from(text.matchAll(/@([a-zA-Z0-9_]+)/g)).map(m => m[1]);
 
-  //  Xử lý mentions nếu có "@"
-  if (data.content?.includes('@')) {
-    this.logger.log(' [NoteService.update] Phát hiện ký tự @ trong nội dung');
-    const $ = cheerio.load(data.content);
-    const text = $.text();
-    const mentions = Array.from(text.matchAll(/@([a-zA-Z0-9_]+)/g)).map(m => m[1]);
+  if (usernames.length > 0) {
+    this.logger.log(`[NoteService.update] Phát hiện mention trong nội dung note: ${usernames.join(', ')}`);
 
-    if (mentions.length > 0) {
-      this.logger.log(`[NoteService.update] Phát hiện mention: ${mentions.join(', ')}`);
-      for (const username of mentions) {
-        const mentionedUser = await this.noteModel.db
-          .collection('users')
-          .findOne({ username });
+    // 🔹 Lấy danh sách mention cũ trong DB
+    const existingMentions = note.mentions?.map(m => m.toString()) || [];
 
-        if (mentionedUser) {
-          await this.noteModel.updateOne(
-            { _id: noteId },
-            { $addToSet: { mentions: mentionedUser._id.toString() } },
-          );
+    for (const username of usernames) {
+      const mentionedUser = await this.noteModel.db
+        .collection('users')
+        .findOne({ username });
 
-          //  Gửi thông báo realtime
-          await this.notifService.sendMention({
-            noteId,
-            mentionedUserId: mentionedUser._id.toString(),
-            byUserId: data.authorId || 'unknown',
-          });
+      if (!mentionedUser) {
+        this.logger.warn(` [NoteService.update] Không tìm thấy user '${username}'`);
+        continue;
+      }
 
-          this.logger.log(` [NoteService.update] Gửi thông báo mention cho ${username}`);
-        } else {
-          this.logger.warn(` [NoteService.update] Không tìm thấy user '${username}'`);
-        }
+      // 🔍 Nếu user chưa từng được mention trước đây → mới gửi thông báo
+      if (!existingMentions.includes(mentionedUser._id.toString())) {
+        await this.noteModel.updateOne(
+          { _id: noteId },
+          { $addToSet: { mentions: mentionedUser._id.toString() } },
+        );
+
+        await this.notifService.sendMention({
+          noteId,
+          mentionedUserId: mentionedUser._id.toString(),
+          byUserId: data.authorId || 'unknown',
+        });
+
+        this.logger.log(` [NoteService.update] ✅ Gửi thông báo mới cho @${username}`);
+      } else {
+        this.logger.verbose(` [NoteService.update] ⏩ Bỏ qua mention cũ: @${username}`);
       }
     }
   }
+}
+
+
+  // 🧹 Không xử lý mention tại đây nữa
+  // (Logic mention sẽ được di chuyển sang CommentService hoặc mutation addComment)
 
   return updatedNote;
 }
+
 async findByTeam(teamId: string) {
   return this.noteModel.find({ teamId }).lean();
 }

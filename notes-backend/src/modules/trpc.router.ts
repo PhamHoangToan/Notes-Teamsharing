@@ -44,28 +44,52 @@ export class TrpcRouter {
     // 🧠 Context
     const trpcHandler = trpcExpress.createExpressMiddleware({
       router: appRouter,
-      createContext: ({ req }) => {
-        const userHeader = req.headers['x-user'];
-        let user = null;
+     createContext: ({ req }) => {
+  const rawHeader = req.headers['x-user'];
+  let user: any = null;
 
-        if (userHeader) {
-          try {
-            const decoded = decodeURIComponent(userHeader as string);
-            user = JSON.parse(decoded);
-            if (!req.headers['x-user-logged']) {
-  console.log('[tRPC Context] User loaded:', user.email || user.username);
-  req.headers['x-user-logged'] = 'true';
-}
+  console.log('=======================');
+  console.log('[tRPC Context] 🔹 RAW x-user header:', rawHeader);
 
-          } catch (err) {
-            console.warn('[tRPC Context] Không parse được x-user:', err);
-          }
-        } else {
-          console.warn(' [tRPC Context] Không có header x-user');
-        }
+  if (rawHeader) {
+    try {
+      // Nếu header bị encode (bắt đầu bằng %7B) → decode trước khi parse
+      const decoded =
+        typeof rawHeader === 'string' && rawHeader.startsWith('%7B')
+          ? decodeURIComponent(rawHeader)
+          : rawHeader;
 
-        return { user, req };
-      },
+      console.log('[tRPC Context] 🔹 Decoded header:', decoded);
+
+      user = JSON.parse(decoded as string);
+
+      console.log('[tRPC Context] ✅ Parsed user:', user);
+
+      // Kiểm tra xem user có id/_id không
+      if (!user?.id && !user?._id) {
+        console.warn('[tRPC Context] ⚠️ user thiếu id hoặc _id:', user);
+      }
+
+      // Đảm bảo có trường id
+      if (user?._id && !user.id) user.id = user._id;
+
+      // Chỉ log 1 lần
+      if (!req.headers['x-user-logged']) {
+        console.log('[tRPC Context] 👤 User loaded:', user.email || user.username || user.id);
+        req.headers['x-user-logged'] = 'true';
+      }
+    } catch (err) {
+      console.warn('[tRPC Context] ❌ Không parse được x-user:', err);
+    }
+  } else {
+    console.warn('[tRPC Context] ⚠️ Không có header x-user');
+  }
+
+  console.log('=======================');
+
+  return { user, req };
+},
+
       batching: { enabled: true },
     });
 

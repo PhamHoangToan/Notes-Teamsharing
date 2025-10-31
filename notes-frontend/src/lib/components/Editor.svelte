@@ -16,6 +16,8 @@
   export let provider: any;
   export let content: string = "";
   export let note: any = null; // 👈 thêm prop note (có createdAt, title, ...)
+export let socket: any;
+export let userColor: string;
 
   // ==================== STATE ====================
   let editor: TipTapEditor | null = null;
@@ -69,28 +71,28 @@
 
   // ==================== MERGE NOTE + IMAGES ====================
   async function loadNoteContent() {
-    await loadNoteImages();
+  await loadNoteImages();
 
-    const noteContent = {
-      type: "text",
-      createdAt: note?.createdAt || new Date().toISOString(),
-      html: content,
-    };
+  const noteContent = {
+    type: "text",
+    createdAt: note?.createdAt || new Date().toISOString(),
+    html: content,
+  };
 
-    timelineItems = [
-      noteContent,
-      ...noteImages.map((img) => ({
-        type: "image",
-        createdAt: img.createdAt,
-        url: img.url,
-        fileName: img.fileName,
-      })),
-    ].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+  timelineItems = [
+    noteContent,
+    ...noteImages.map((img) => ({
+      type: "image",
+      createdAt: img.createdAt,
+      url: img.url,
+      fileName: img.fileName,
+    })),
+  ].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  ); // 👈 đảo chiều: mới nhất lên đầu
 
-    console.log("🧩 [Timeline] Combined items:", timelineItems);
-  }
+  console.log("🧩 [Timeline] Combined items (newest first):", timelineItems);
+}
 
   // ==================== INIT EDITOR ====================
   onMount(async () => {
@@ -214,6 +216,13 @@
       editor.on("keydown", (event: KeyboardEvent) => {
         if (event.key === "@") dispatch("mentiontrigger");
       });
+      editor.on("selectionUpdate", () => {
+  const pos = editor.state.selection?.from || 0;
+  socket?.emit("cursor:move", {
+    position: pos,
+    color: userColor,
+  });
+});
     } catch (err) {
       console.error("❌ [Editor] Error initializing TipTap:", err);
     }
@@ -332,6 +341,25 @@
 
 
 <style>
+  /* ✅ Giới hạn kích thước ảnh trong vùng soạn thảo (phía trên) */
+.ProseMirror img {
+  max-width: 200px !important;
+  max-height: 150px !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: cover;
+  border-radius: 8px;
+  margin: 6px 0;
+  display: inline-block;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+/* 👁 Nhẹ nhàng phóng to khi hover */
+.ProseMirror img:hover {
+  transform: scale(1.05);
+}
+
   .note-editor-container {
     min-height: 400px;
     max-height: 70vh;
@@ -363,13 +391,20 @@
   }
   /* Giảm kích thước ảnh trong timeline */
 .note-timeline-image img {
-  max-width: 300px; /* 👈 thay đổi từ 100% thành 300px để ảnh nhỏ hơn */
-  max-height: 200px;
+  max-width: 200px !important;
+  max-height: 150px !important;
+  width: auto !important;
+  height: auto !important;
   object-fit: cover;
   border-radius: 8px;
   margin-top: 4px;
   transition: transform 0.2s ease;
   cursor: pointer;
+}
+.note-timeline-image > img,
+.note-timeline-image img.tiptap-image {
+  max-width: 200px !important;
+  max-height: 150px !important;
 }
 
 /* Hiệu ứng hover nhẹ */
@@ -383,6 +418,9 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+}
+.note-timeline-image {
+  display: none !important;
 }
 
 </style>

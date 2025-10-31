@@ -8,6 +8,7 @@
   import MentionDropdown from "$lib/components/MentionDropdown.svelte";
   import * as Y from "yjs";
   import { currentNote, noteStore } from "$lib/stores/noteStore";
+  import { io, Socket } from "socket.io-client";
 
   // =============================== STATE ===============================
   let ydoc: Y.Doc | null = null;
@@ -26,6 +27,9 @@
   let roleToAdd: "viewer" | "editor" = "viewer";
 
   let showMentionDropdown = false;
+  let socket: Socket | null = null;
+  let onlineUsers: any[] = [];
+  let userColor = "#" + Math.floor(Math.random() * 16777215).toString(16);
 
   // =============================== MOUNT ===============================
   onMount(() => {
@@ -68,12 +72,38 @@
       ydoc = newYdoc;
       provider = newProvider;
 
-      // Inject initial content
+      // --- PRESENCE CONNECTION ---
+      const apiUrl =
+        import.meta.env.PUBLIC_API_URL?.replace("/trpc", "") ||
+        "http://localhost:4000";
+
+      socket = io(`${apiUrl}/presence`, {
+        query: {
+          noteId: id,
+          userId: currentUser?.id,
+          color: userColor,
+        },
+      });
+
+      socket.on("connect", () => {
+        console.log("🟢 [Presence] Connected", socket.id);
+      });
+
+      socket.on("presence:update", (users) => {
+        onlineUsers = users;
+        console.log("👥 [Presence] Active users:", users);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("🔴 [Presence] Disconnected");
+      });
+
+      // --- Yjs fragment ---
       const fragment = ydoc.getXmlFragment("default");
       if (fragment.length === 0 && note.content) {
         const paragraph = new Y.XmlElement("paragraph");
         const textNode = new Y.XmlText();
-        textNode.insert(0, note.content.replace(/<[^>]+>/g, "")); // strip HTML
+        textNode.insert(0, note.content.replace(/<[^>]+>/g, ""));
         paragraph.insert(0, [textNode]);
         fragment.insert(0, [paragraph]);
       }
@@ -112,14 +142,18 @@
     if (!ydoc || !noteId) return;
     try {
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const xmlFragment = ydoc.getXmlFragment("default");
-      const htmlContent = xmlFragment.toString();
+      const fragment = ydoc.getXmlFragment("default");
+
+      const div = document.createElement("div");
+      div.appendChild(fragment.toDOM());
+      const htmlContent = div.innerHTML; // ✅ giữ nguyên định dạng xuống dòng
 
       await trpc.note.update.mutate({
         noteId,
         content: htmlContent,
         authorId: currentUser?.id,
       });
+
       lastSyncedAt = new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -148,6 +182,8 @@
     ydoc?.destroy();
     provider = null;
     ydoc = null;
+    socket?.disconnect();
+    socket = null;
   }
 
   // =============================== COLLABORATOR ===============================
@@ -200,7 +236,7 @@
   </div>
 {:else if note}
   <div
-    class="p-6 h-screen overflow-y-auto flex flex-col gap-4 transition-colors duration-300"
+    class="p-6 flex flex-col gap-4 transition-colors duration-300"
     style="background-color: var(--note-bg); color: var(--note-text-color);"
   >
     <div class="flex items-center justify-between mb-3">
@@ -213,6 +249,15 @@
         style="color: var(--note-text-color); background-color: var(--note-bg); border-color: var(--note-border);"
         placeholder="(Không có tiêu đề)"
       />
+      <!-- <div class="flex items-center gap-2">
+  {#each onlineUsers as u}
+    <div
+      class="w-3 h-3 rounded-full border border-white shadow-sm"
+      style="background-color: {u.cursor?.color || '#ccc'};"
+      title={u.userId}
+    ></div>
+  {/each}
+</div> -->
 
       <div class="flex items-center gap-4">
         <div class="flex items-center gap-2">
@@ -246,34 +291,51 @@
         </span>
       </div>
     </div>
-
-    {#if ydoc && provider}
-  <div
-    class="flex-1 border rounded-md overflow-hidden relative"
-    style="border-color: var(--note-border);"
-  >
-    <div
-      class="note-scroll-area overflow-y-auto max-h-[70vh] p-2"
-      style="scrollbar-width: thin;"
-    >
-      <Editor
-        {noteId}
-        {provider}
-        {ydoc}
-        content={note.content}
-        on:mentiontrigger={handleMentionTrigger}
-      />
+    <div class="flex items-center gap-3">
+      {#each onlineUsers as u}
+        <div class="flex items-center gap-1">
+          <img
+            src={u.userId?.avatarUrl || "/default-avatar.png"}
+            alt={u.userId?.username}
+            class="w-6 h-6 rounded-full border border-gray-300 object-cover"
+          />
+          <span class="text-sm" style="color: {u.cursor?.color || '#999'};">
+            {u.userId?.username || "Ẩn danh"}
+          </span>
+        </div>
+      {/each}
     </div>
 
-    {#if showMentionDropdown}
-      <MentionDropdown onSelect={handleMentionSelect} />
+    {#if ydoc && provider}
+    
+      <div
+        class="flex-1 border rounded-md overflow-hidden relative"
+        style="border-color: var(--note-border);"
+      >
+        <div
+          class="note-scroll-area overflow-y-auto max-h-[100vh] p-2"
+          style="scrollbar-width: thin;"
+        >
+          <Editor
+            {noteId}
+            {provider}
+            {ydoc}
+            {socket}
+            {userColor}
+            content={note.content}
+            on:mentiontrigger={handleMentionTrigger}
+          />
+        </div>
+
+        {#if showMentionDropdown}
+          <MentionDropdown onSelect={handleMentionSelect} />
+        {/if}
+      </div>
+    {:else}
+      <div class="flex-1 flex items-center justify-center text-gray-400 italic">
+        Đang khởi tạo trình soạn thảo...
+      </div>
     {/if}
-  </div>
-{:else}
-  <div class="flex-1 flex items-center justify-center text-gray-400 italic">
-    Đang khởi tạo trình soạn thảo...
-  </div>
-{/if}
 
     <button
       class="bg-gray-700 text-white px-3 py-1 rounded self-start"
@@ -289,8 +351,8 @@
         <div
           class="rounded-lg p-6 shadow-xl w-96 transition-colors duration-300"
           style="
-        background-color: var(--modal-bg, var(--sidebar-bg));
-        color: var(--text-color, var(--sidebar-text-color));
+        background-color: var(--modal-bg, var(--sidebar-bg, #1e1e1e));
+        color: var(--text-color, var(--sidebar-text-color, #f5f5f5));
       "
         >
           <h3 class="text-lg font-semibold mb-4">Phân quyền người dùng</h3>
@@ -301,9 +363,9 @@
             placeholder="Nhập email người dùng..."
             class="border rounded px-3 py-2 w-full mb-3 transition-colors duration-300"
             style="
-          border-color: var(--border-color, #ccc);
-          background-color: var(--input-bg, transparent);
-          color: var(--text-color, inherit);
+          border-color: var(--border-color, #555);
+          background-color: var(--input-bg, #2b2b2b);
+          color: var(--text-color, #fff);
         "
           />
 
@@ -311,25 +373,34 @@
             bind:value={roleToAdd}
             class="border rounded px-3 py-2 w-full mb-4 transition-colors duration-300"
             style="
-          border-color: var(--border-color, #ccc);
-          background-color: var(--input-bg, transparent);
-          color: var(--text-color, inherit);
+          border-color: var(--border-color, #555);
+          background-color: var(--input-bg, #2b2b2b);
+          color: var(--text-color, #fff);
         "
           >
             <option value="viewer">👁 Viewer (chỉ xem)</option>
             <option value="editor">✏️ Editor (chỉnh sửa)</option>
           </select>
 
-          <button
-            class="px-4 py-2 rounded w-full font-semibold transition-colors duration-200"
-            style="
-          background-color: var(--primary-color, #2563eb);
-          color: var(--button-text, white);
-        "
-            on:click={addCollaborator}
-          >
-            Cấp quyền
-          </button>
+          <div class="flex justify-end gap-2 mt-2">
+            <button
+              class="px-4 py-2 rounded-md bg-gray-500 hover:bg-gray-600 text-white transition"
+              on:click={() => (openCollaborators = false)}
+            >
+              Hủy
+            </button>
+
+            <button
+              class="px-4 py-2 rounded-md font-semibold transition"
+              style="
+            background-color: var(--primary-color, #2563eb);
+            color: var(--button-text, white);
+          "
+              on:click={addCollaborator}
+            >
+              Cấp quyền
+            </button>
+          </div>
         </div>
       </div>
     {/if}
@@ -339,10 +410,13 @@
 {:else}
   <p class="text-center text-gray-400 mt-10">❌ Không tìm thấy ghi chú</p>
 {/if}
+
 <style>
+  /* ✅ Giới hạn kích thước ảnh trong vùng soạn thảo (phía trên) */
+
   .note-scroll-area {
     overflow-y: auto;
-    max-height: 70vh;
+    max-height: 200vh;
     scroll-behavior: smooth;
     scrollbar-width: thin;
   }
@@ -359,4 +433,31 @@
   .note-scroll-area::-webkit-scrollbar-thumb:hover {
     background-color: rgba(150, 150, 150, 0.6);
   }
+   .note-scroll-area {
+    overflow-y: auto;
+    max-height: 80vh; /* ✅ Giới hạn vùng hiển thị, để scrollbar xuất hiện */
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+  }
+
+  .note-scroll-area::-webkit-scrollbar {
+    width: 10px; /* ✅ to hơn để dễ thấy */
+  }
+
+  .note-scroll-area::-webkit-scrollbar-track {
+    background: rgba(200, 200, 200, 0.1);
+  }
+
+  .note-scroll-area::-webkit-scrollbar-thumb {
+    background-color: rgba(150, 150, 150, 0.4);
+    border-radius: 8px;
+  }
+
+  .note-scroll-area::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(150, 150, 150, 0.7);
+  }
+  .note-timeline-image {
+  display: none !important;
+}
+
 </style>

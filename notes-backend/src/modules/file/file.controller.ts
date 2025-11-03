@@ -2,12 +2,15 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Param,
   UseInterceptors,
   UploadedFile,
   Body,
   Logger,
   BadRequestException,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FileService } from './file.service';
@@ -19,7 +22,7 @@ export class FileController {
   constructor(private readonly fileService: FileService) {}
 
   // ============================================================
-  // 🔹 Lấy danh sách file theo noteId (sắp xếp theo thời gian upload)
+  // 🔹 Lấy danh sách file theo noteId
   // ============================================================
   @Get(':noteId')
   async getFilesByNoteId(@Param('noteId') noteId: string) {
@@ -38,7 +41,6 @@ export class FileController {
         return [];
       }
 
-      // 🔽 Sắp xếp file theo thời gian tạo (mới nhất trước)
       const sortedFiles = files.sort(
         (a: any, b: any) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -51,7 +53,6 @@ export class FileController {
         ),
       );
 
-      // Trả về đầy đủ dữ liệu cần thiết cho frontend
       return sortedFiles.map((f) => ({
         _id: f._id,
         fileName: f.fileName,
@@ -63,9 +64,7 @@ export class FileController {
       }));
     } catch (err) {
       this.logger.error(
-        `❌ [Controller] Lỗi khi lấy danh sách file cho noteId=${noteId}: ${
-          err.message || err
-        }`,
+        `❌ [Controller] Lỗi khi lấy danh sách file cho noteId=${noteId}: ${err.message || err}`,
       );
       this.logger.debug(err.stack);
       throw err;
@@ -117,8 +116,40 @@ export class FileController {
 
       return response;
     } catch (err) {
+      this.logger.error(`❌ [UPLOAD] Lỗi khi upload file: ${err.message || err}`);
+      this.logger.debug(err.stack);
+      throw err;
+    }
+  }
+
+  // ============================================================
+  // 🔹 Xóa file theo ID
+  // ============================================================
+  @Delete(':id')
+  async deleteFile(@Param('id') id: string) {
+    this.logger.log(`🗑️ [DELETE] Yêu cầu xóa file id=${id}`);
+
+    if (!id) {
+      this.logger.warn('⚠️ Thiếu fileId (id) trong request');
+      throw new BadRequestException('Thiếu fileId');
+    }
+
+    try {
+      // ⚠️ TODO: Thêm xác thực quyền người dùng tại đây nếu cần
+      // ví dụ: kiểm tra userId từ token JWT có trùng với chủ note/file không
+
+      await this.fileService.deleteFile(id);
+
+      this.logger.log(`✅ [DELETE] Đã xóa file id=${id} thành công`);
+      return { message: 'File deleted successfully', fileId: id };
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        this.logger.warn(`⚠️ [DELETE] Không tìm thấy file để xóa: id=${id}`);
+        throw new NotFoundException(`Không tìm thấy file với id=${id}`);
+      }
+
       this.logger.error(
-        `❌ [UPLOAD] Lỗi khi upload file: ${err.message || err}`,
+        `❌ [DELETE] Lỗi khi xóa file id=${id}: ${err.message || err}`,
       );
       this.logger.debug(err.stack);
       throw err;

@@ -63,4 +63,26 @@ export class S3Service {
       throw err;
     }
   }
+
+
+  async deleteFileByUrl(url: string) {
+  try {
+    // Trích xuất key từ URL S3
+    const key = decodeURIComponent(url.split('.amazonaws.com/')[1]);
+    if (!key) throw new Error('Invalid S3 URL');
+
+    const params = {
+      Bucket: this.bucketName,
+      Key: key,
+    };
+
+    this.logger.log(`🗑️ [S3Service] Xóa file key=${key} khỏi bucket=${this.bucketName}`);
+    await this.s3Client.send(new DeleteObjectCommand(params));
+    this.logger.log(`✅ [S3Service] Đã xóa file khỏi S3`);
+  } catch (err) {
+    this.logger.error(`❌ [S3Service] Lỗi xóa file S3: ${err.message}`);
+    throw err;
+  }
+}
+
 }

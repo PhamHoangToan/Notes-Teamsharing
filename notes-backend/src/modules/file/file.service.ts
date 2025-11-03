@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { File } from './file.schema';
@@ -6,7 +6,7 @@ import { S3Service } from '../../utils/s3.service';
 
 @Injectable()
 export class FileService {
-  private readonly logger = new Logger(FileService.name); // ✅ Thêm logger
+  private readonly logger = new Logger(FileService.name);
 
   constructor(
     @InjectModel(File.name) private readonly fileModel: Model<File>,
@@ -105,10 +105,48 @@ export class FileService {
   }
 
   // ============================================================
-  // 🔹 Xóa file theo fileId
+  // 🔹 Xóa file theo ID
   // ============================================================
-  async deleteFile(fileId: string) {
-    this.logger.log(`🗑️ [FileService] Xóa fileId=${fileId}`);
-    return this.fileModel.findByIdAndDelete(fileId);
+  async deleteFile(id: string): Promise<void> {
+    this.logger.log(`🗑️ [Service] Bắt đầu xóa file id=${id}`);
+
+    // 1️⃣ Tìm file trong DB
+    const file = await this.fileModel.findById(id).exec();
+    if (!file) {
+      this.logger.warn(`⚠️ [Service] Không tìm thấy file id=${id} trong DB`);
+      throw new NotFoundException(`Không tìm thấy file với id=${id}`);
+    }
+
+    // 2️⃣ Xóa file trên S3 (nếu có URL)
+    try {
+      const s3Url =
+        typeof file.s3Url === 'string' ? file.s3Url : file.s3Url?.url || null;
+
+      if (s3Url) {
+        this.logger.log(`🌐 [S3] Đang xóa file trên S3: ${s3Url}`);
+        await this.s3Service.deleteFileByUrl(s3Url);
+        this.logger.log(`✅ [S3] Đã xóa file thành công khỏi S3`);
+      } else {
+        this.logger.warn(`⚠️ [S3] File id=${id} không có s3Url, bỏ qua bước xóa S3`);
+      }
+    } catch (s3Err) {
+      this.logger.error(
+        `❌ [S3] Lỗi khi xóa file trên S3: ${s3Err.message}`,
+        s3Err.stack,
+      );
+      // Không throw để vẫn xóa khỏi DB
+    }
+
+    // 3️⃣ Xóa record trong MongoDB
+    try {
+      await this.fileModel.findByIdAndDelete(id).exec();
+      this.logger.log(`✅ [DB] Đã xóa file id=${id} khỏi Database`);
+    } catch (dbErr) {
+      this.logger.error(
+        `❌ [DB] Không thể xóa file id=${id}: ${dbErr.message}`,
+        dbErr.stack,
+      );
+      throw dbErr;
+    }
   }
 }

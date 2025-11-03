@@ -18,6 +18,13 @@
   export let note: any = null; // 👈 thêm prop note (có createdAt, title, ...)
 export let socket: any;
 export let userColor: string;
+let noteFiles: {
+  url: string;
+  fileName: string;
+  mimeType: string;
+  createdAt: string;
+  fileSize?: number;
+}[] = [];
 
   // ==================== STATE ====================
   let editor: TipTapEditor | null = null;
@@ -33,52 +40,87 @@ export let userColor: string;
   const trpc = get(noteStore).trpc;
   const dispatch = createEventDispatcher();
 
-  // ==================== LOAD IMAGES ====================
-  async function loadNoteImages() {
-    try {
-      const apiUrl =
-        import.meta.env.PUBLIC_API_URL?.replace("/trpc", "") ||
-        "http://localhost:4000";
+ // ==================== LOAD ATTACHMENTS (ảnh + file) ====================
+async function loadNoteAttachments() {
+  try {
+    const apiUrl =
+      import.meta.env.PUBLIC_API_URL?.replace("/trpc", "") ||
+      "http://localhost:4000";
 
-      const res = await fetch(`${apiUrl}/file/${noteId}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await fetch(`${apiUrl}/file/${noteId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      const data = await res.json();
+    const data = await res.json();
 
-      noteImages = (data || [])
-        .filter((f: any) => f.mimeType?.startsWith("image/"))
-        .map((f: any) => {
-          const url =
-            typeof f.s3Url === "string"
-              ? f.s3Url
-              : f.s3Url?.url || f.url || null;
+    // Chia tệp ra 2 loại
+    const imageFiles = data.filter((f: any) =>
+      f.mimeType?.startsWith("image/")
+    );
+    const otherFiles = data.filter(
+      (f: any) => !f.mimeType?.startsWith("image/")
+    );
 
-          return {
-            url,
-            fileName: f.fileName,
-            mimeType: f.mimeType,
-            createdAt: f.createdAt || new Date().toISOString(), // 👈 đảm bảo có thời gian
-          };
-        })
-        .filter((img) => !!img.url);
+    // ✅ Danh sách ảnh (giữ nguyên logic cũ)
+    noteImages = imageFiles.map((f: any) => ({
+      url: typeof f.s3Url === "string" ? f.s3Url : f.s3Url?.url || f.url || null,
+      fileName: f.fileName,
+      mimeType: f.mimeType,
+      createdAt: f.createdAt || new Date().toISOString(),
+    }));
 
-      console.log("🖼️ [Images] Loaded", noteImages.length, "ảnh:", noteImages);
-    } catch (err) {
-      console.error("❌ [Images] Lỗi tải danh sách ảnh:", err);
-      noteImages = [];
-    }
+    // ✅ Danh sách file khác (PDF, DOCX, ZIP, ...)
+    noteFiles = otherFiles.map((f: any) => ({
+      url: typeof f.s3Url === "string" ? f.s3Url : f.s3Url?.url || f.url || null,
+      fileName: f.fileName,
+      mimeType: f.mimeType,
+      createdAt: f.createdAt || new Date().toISOString(),
+      fileSize: f.fileSize || 0,
+    }));
+
+    console.log("🗂️ [Files] Loaded:", {
+      images: noteImages.length,
+      files: noteFiles.length,
+    });
+  } catch (err) {
+    console.error("❌ [Attachments] Lỗi tải danh sách tệp:", err);
+    noteImages = [];
+    noteFiles = [];
+  }
+}
+function formatFileSize(size?: number) {
+  if (!size) return "";
+  const mb = size / (1024 * 1024);
+  return `${mb.toFixed(2)} MB`;
+}
+// ==================== MERGE NOTE + IMAGES + FILE LINKS ====================
+async function loadNoteContent() {
+  // ✅ 1. Sửa lỗi thẻ <link> -> <a>
+  if (content) {
+    content = content
+      .replace(/<link\b/gi, "<a")
+      .replace(/<\/link>/gi, "</a>");
   }
 
-  // ==================== MERGE NOTE + IMAGES ====================
-  async function loadNoteContent() {
-  await loadNoteImages();
+  await loadNoteAttachments();
 
+  // ✅ 2. Tạo object nội dung text
   const noteContent = {
     type: "text",
     createdAt: note?.createdAt || new Date().toISOString(),
     html: content,
   };
 
+  // ✅ 3. Parse các thẻ <a> trong content để thêm vào timeline
+  // const parser = new DOMParser();
+  // const doc = parser.parseFromString(content || "", "text/html");
+  // const links = Array.from(doc.querySelectorAll("a")).map((a) => ({
+  //   type: "file",
+  //   createdAt: note?.updatedAt || new Date().toISOString(),
+  //   url: a.getAttribute("href"),
+  //   fileName: a.textContent || "Tệp đính kèm",
+  // }));
+
+  // ✅ 4. Gộp tất cả vào timeline
   timelineItems = [
     noteContent,
     ...noteImages.map((img) => ({
@@ -87,11 +129,20 @@ export let userColor: string;
       url: img.url,
       fileName: img.fileName,
     })),
+    ...noteFiles.map((f) => ({
+      type: "file",
+      createdAt: f.createdAt,
+      url: f.url,
+      fileName: f.fileName,
+      mimeType: f.mimeType,
+      fileSize: f.fileSize,
+    })),
+    // ...links,
   ].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  ); // 👈 đảo chiều: mới nhất lên đầu
+  );
 
-  console.log("🧩 [Timeline] Combined items (newest first):", timelineItems);
+  console.log("🧩 [Timeline] Combined items:", timelineItems);
 }
 
   // ==================== INIT EDITOR ====================
@@ -264,10 +315,7 @@ export let userColor: string;
         editor?.chain().focus().setImage({ src: imageUrl, alt: fileName }).run();
         console.log("✅ Đã chèn ảnh vào editor!");
       } else {
-        editor
-          ?.commands.insertContent(
-            `<a href="${imageUrl}" target="_blank" rel="noopener">${fileName}</a>`
-          );
+        console.log("📎 Đã thêm tệp, đang làm mới timeline...");
       }
 
       // Reload timeline sau upload
@@ -335,6 +383,31 @@ export let userColor: string;
           {item.fileName} — 🕒 {new Date(item.createdAt).toLocaleString("vi-VN")}
         </p>
       </div>
+      {:else if item.type === "file"}
+  <div
+    class="note-timeline-file flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 w-fit cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+    on:click={() => window.open(item.url, "_blank")}
+  >
+    <!-- icon file -->
+    <div
+      class="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-lg flex justify-center items-center"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700 dark:text-gray-100"
+        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M7 3v18m10-18v18M3 7h18M3 17h18" />
+      </svg>
+    </div>
+
+    <!-- tên & dung lượng -->
+    <div class="flex flex-col">
+      <span class="font-medium text-sm">{item.fileName}</span>
+      <span class="text-xs text-gray-500">
+        {formatFileSize(item.fileSize)} — {new Date(item.createdAt).toLocaleString("vi-VN")}
+      </span>
+    </div>
+  </div>
+
     {/if}
   {/each}
 </div>
@@ -422,5 +495,17 @@ export let userColor: string;
 .note-timeline-image {
   display: none !important;
 }
+
+.note-timeline-file {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+.dark .note-timeline-file {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.note-timeline-file:hover {
+  transform: translateY(-1px);
+}
+
 
 </style>

@@ -33,17 +33,37 @@
 
   // =============================== MOUNT ===============================
   onMount(() => {
-    unsubscribe = page.subscribe(($page) => {
-      const id = $page.params.id;
-      if (id && id !== noteId) {
-        loadNote(id);
-      }
-    });
-    return () => {
-      unsubscribe?.();
-      cleanupYjs();
-    };
+  unsubscribe = page.subscribe(async ($page) => {
+    const id = $page.params.id;
+    if (id && id !== noteId) {
+      // 🔹 1. Load note từ server
+      await loadNote(id);
+
+      // 🔹 2. Sau khi load xong, kiểm tra và sửa <link> nếu có
+      // if (note?.content?.includes("<link")) {
+      //   note.content = note.content
+      //     .replace(/<link\b/gi, "<a")
+      //     .replace(/<\/link>/gi, "</a>");
+
+      //   try {
+      //     await trpc.note.update.mutate({
+      //       noteId: note._id,
+      //       content: note.content,
+      //     });
+      //     console.log("🧹 Đã làm sạch nội dung <link> trong DB");
+      //   } catch (err) {
+      //     console.warn("⚠️ Không thể auto-fix nội dung DB:", err);
+      //   }
+      // }
+    }
   });
+
+  return () => {
+    unsubscribe?.();
+    cleanupYjs();
+  };
+});
+
 
   onDestroy(() => {
     cleanupYjs();
@@ -66,7 +86,17 @@
         viewerId: currentUser?.id,
       });
       if (!res) throw new Error("Note not found");
+      if (res.content) {
+  res.content = res.content
+   res.content = res.content
+   .replace(/<link\b/gi, "<a")       // Sửa lỗi gốc
+       .replace(/<\/link>/gi, "</a>")      // Sửa lỗi gốc
+        .replace(/&lt;link\b/gi, "<a")  // Sửa lỗi đã bị Tiptap escape
+        .replace(/&lt;\/link&gt;/gi, "</a>");
+}
       note = res;
+      // 🔧 Fix nội dung có thẻ <link> trong note.content
+
 
       const { ydoc: newYdoc, provider: newProvider } = createYDoc(id);
       ydoc = newYdoc;
@@ -100,15 +130,7 @@
 
       // --- Yjs fragment ---
       const fragment = ydoc.getXmlFragment("default");
-      if (fragment.length === 0 && note.content) {
-        const paragraph = new Y.XmlElement("paragraph");
-        const textNode = new Y.XmlText();
-        textNode.insert(0, note.content.replace(/<[^>]+>/g, ""));
-        paragraph.insert(0, [textNode]);
-        fragment.insert(0, [paragraph]);
-      }
-
-      fragment.observeDeep(() => scheduleSave());
+  fragment.observeDeep(() => scheduleSave());
 
       provider.on("status", (e: any) => {
         syncing = e.status === "connected";
@@ -307,7 +329,6 @@
     </div>
 
     {#if ydoc && provider}
-    
       <div
         class="flex-1 border rounded-md overflow-hidden relative"
         style="border-color: var(--note-border);"
@@ -433,7 +454,7 @@
   .note-scroll-area::-webkit-scrollbar-thumb:hover {
     background-color: rgba(150, 150, 150, 0.6);
   }
-   .note-scroll-area {
+  .note-scroll-area {
     overflow-y: auto;
     max-height: 80vh; /* ✅ Giới hạn vùng hiển thị, để scrollbar xuất hiện */
     scroll-behavior: smooth;
@@ -457,7 +478,6 @@
     background-color: rgba(150, 150, 150, 0.7);
   }
   .note-timeline-image {
-  display: none !important;
-}
-
+    display: none !important;
+  }
 </style>

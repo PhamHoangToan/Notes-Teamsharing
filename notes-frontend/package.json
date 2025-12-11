@@ -13,6 +13,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^6.1.0",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.43.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.0",
 		"@tailwindcss/forms": "^0.5.10",
@@ -27,6 +28,9 @@
 		"vite-plugin-static-copy": "^3.1.4"
 	},
 	"dependencies": {
+		"@capacitor/android": "^7.4.4",
+		"@capacitor/cli": "^7.4.4",
+		"@capacitor/core": "^7.4.4",
 		"@tiptap/core": "^2.26.4",
 		"@tiptap/extension-collaboration": "^2.26.4",
 		"@tiptap/extension-collaboration-cursor": "^2.26.2",

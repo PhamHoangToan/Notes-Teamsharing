@@ -1,32 +1,41 @@
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 import type { AppRouter } from './types';
 
-// 🚀 Tự động đọc user từ localStorage và gửi qua header x-user
+/**
+ * 🧠 Phát hiện môi trường và trả base URL phù hợp
+ * - Khi SSR: không có window → fallback sang 10.0.2.2 hoặc localhost
+ * - Khi chạy Capacitor: dùng 10.0.2.2 để kết nối backend local
+ * - Khi web: dùng origin hiện tại
+ */
+function getBaseUrl() {
+  if (typeof window === 'undefined') {
+    // SSR / build time
+    return 'http://10.0.2.2:4000';
+  }
+
+  // Capacitor runtime (Android emulator)
+  if (window.Capacitor) {
+    return 'http://10.0.2.2:4000';
+  }
+
+  // Web browser
+  return window.location.origin || 'http://localhost:4000';
+}
+
 export const trpc = createTRPCProxyClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: 'http://localhost:4000/trpc',
+      url: `${getBaseUrl()}/trpc`,
 
       headers() {
-        // ✅ Tránh crash khi SSR hoặc chưa có window
-        if (typeof window === 'undefined') {
-          return {};
-        }
+        // Khi SSR, không có localStorage
+        if (typeof window === 'undefined') return {};
 
         try {
           const stored = localStorage.getItem('user');
+          if (!stored) return {};
 
-          if (!stored) {
-            // Không có user => không gửi header
-            console.warn('[tRPC Client] ⚠️ Không tìm thấy user trong localStorage');
-            return {};
-          }
-
-          // Kiểm tra JSON hợp lệ
           JSON.parse(stored);
-
-          // Gửi thẳng JSON string (server đã handle decode)
-          console.log('[tRPC Client] 📤 Gửi header x-user:', stored);
           return { 'x-user': stored };
         } catch (err) {
           console.error('[tRPC Client] ❌ Lỗi khi đọc user từ localStorage:', err);

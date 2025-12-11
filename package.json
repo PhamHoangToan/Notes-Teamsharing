@@ -1,9 +1,16 @@
 {
   "type": "module",
   "dependencies": {
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
     "ws": "^8.18.3"
   },
   "scripts": {
-    "start": "node signaling-server.js"
+    "start": "node signaling-server.js",
+    "build": "svelte-kit build",
+    "preview": "svelte-kit preview"
+  },
+  "devDependencies": {
+    "@sveltejs/kit": "^2.48.4"
   }
 }

@@ -14,7 +14,7 @@
     try {
       teams = await trpc.team.findByOwner.query({ ownerId: user.id });
     } catch (err) {
-      console.error(" Lỗi load teams:", err);
+      console.error("❌ Lỗi load teams:", err);
     } finally {
       loading = false;
     }
@@ -49,5 +49,5 @@
         </div>
       {/each}
     </div>
-  {/else}
+  {/if} <!-- ✅ đóng block if đúng chỗ -->
 </div>

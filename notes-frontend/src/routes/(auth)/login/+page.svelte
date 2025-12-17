@@ -59,11 +59,11 @@
         <span>Sign in with Google</span>
       </button>
       <button class="w-full flex items-center justify-center border rounded-md py-2 hover:bg-gray-50 dark:hover:bg-[#3a3a3a] transition">
-        <img src="https://www.svgrepo.com/show/303145/microsoft-azure.svg" alt="Microsoft" class="w-5 h-5 mr-2" />
+        <img src="/icons/microsoft-azure.svg" alt="Microsoft" class="w-5 h-5 mr-2" />
         <span>Sign in with Microsoft</span>
       </button>
       <button class="w-full flex items-center justify-center border rounded-md py-2 hover:bg-gray-50 dark:hover:bg-[#3a3a3a] transition">
-        <img src="https://www.svgrepo.com/show/349526/apple.svg" alt="Apple" class="w-5 h-5 mr-2" />
+        <img src="/icons/apple-svgrepo.svg" alt="Apple" class="w-5 h-5 mr-2" />
         <span>Sign in with Apple</span>
       </button>
     </div>

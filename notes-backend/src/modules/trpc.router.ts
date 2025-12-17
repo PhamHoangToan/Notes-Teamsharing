@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { initTRPC } from '@trpc/server';
 import * as trpcExpress from '@trpc/server/adapters/express';
 
-// 🧩 Import services
+//  Import services
 import { S3Service } from '../utils/s3.service';
 import { NoteService } from './note/note.service';
 import { UserService } from './user/user.service';
@@ -31,7 +31,7 @@ export class TrpcRouter {
   createExpressMiddleware() {
     const t = initTRPC.create();
 
-    // 🧩 Tạo appRouter chính
+    //  Tạo appRouter chính
     const appRouter = t.router({
       health: t.procedure.query(() => ({ ok: true })),
       note: noteRouter(this.noteService),
@@ -41,15 +41,15 @@ export class TrpcRouter {
       team: teamRouter(t, this.teamService),
     });
 
-    // 🧠 Context
+    //  Context
     const trpcHandler = trpcExpress.createExpressMiddleware({
       router: appRouter,
      createContext: ({ req }) => {
   const rawHeader = req.headers['x-user'];
   let user: any = null;
 
-  console.log('=======================');
-  console.log('[tRPC Context] 🔹 RAW x-user header:', rawHeader);
+
+  console.log('[tRPC Context]  RAW x-user header:', rawHeader);
 
   if (rawHeader) {
     try {
@@ -59,15 +59,15 @@ export class TrpcRouter {
           ? decodeURIComponent(rawHeader)
           : rawHeader;
 
-      console.log('[tRPC Context] 🔹 Decoded header:', decoded);
+      console.log('[tRPC Context] Decoded header:', decoded);
 
       user = JSON.parse(decoded as string);
 
-      console.log('[tRPC Context] ✅ Parsed user:', user);
+      console.log('[tRPC Context] Parsed user:', user);
 
       // Kiểm tra xem user có id/_id không
       if (!user?.id && !user?._id) {
-        console.warn('[tRPC Context] ⚠️ user thiếu id hoặc _id:', user);
+        console.warn('[tRPC Context]  user thiếu id hoặc _id:', user);
       }
 
       // Đảm bảo có trường id
@@ -75,17 +75,17 @@ export class TrpcRouter {
 
       // Chỉ log 1 lần
       if (!req.headers['x-user-logged']) {
-        console.log('[tRPC Context] 👤 User loaded:', user.email || user.username || user.id);
+        console.log('[tRPC Context]  User loaded:', user.email || user.username || user.id);
         req.headers['x-user-logged'] = 'true';
       }
     } catch (err) {
-      console.warn('[tRPC Context] ❌ Không parse được x-user:', err);
+      console.warn('[tRPC Context] Không parse được x-user:', err);
     }
   } else {
-    console.warn('[tRPC Context] ⚠️ Không có header x-user');
+    console.warn('[tRPC Context]  Không có header x-user');
   }
 
-  console.log('=======================');
+  
 
   return { user, req };
 },

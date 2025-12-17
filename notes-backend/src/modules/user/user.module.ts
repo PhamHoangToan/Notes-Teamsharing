@@ -9,11 +9,11 @@ import { UserService } from './user.service';
   imports: [
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
-      { name: Note.name, schema: NoteSchema }, // ✅ Gộp vào cùng mảng
+      { name: Note.name, schema: NoteSchema }, 
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'supersecretkey',
-      signOptions: { expiresIn: '7d' }, // ✅ Token hết hạn sau 7 ngày
+      signOptions: { expiresIn: '7d' }, // Token hết hạn sau 7 ngày
     }),
   ],
   providers: [UserService],

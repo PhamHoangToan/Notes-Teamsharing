@@ -23,10 +23,6 @@
     const res = await trpc.user.register.mutate({ username, email, password });
     success = 'Đăng ký thành công! Vui lòng đăng nhập.';
     
-    // ❌ Xóa dòng lưu user — tránh layout auto-redirect
-    // localStorage.setItem('user', JSON.stringify(res));
-
-    // ✅ Chuyển hướng sau khi thông báo thành công
     setTimeout(() => goto('/login'), 1500);
   } catch (err: any) {
     error = err.message || 'Đăng ký thất bại';

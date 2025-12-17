@@ -140,5 +140,5 @@
 </style>
 
 <script context="module">
-  export const ssr = false;
+  // export const ssr = false;
 </script>

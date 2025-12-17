@@ -32,7 +32,7 @@ async function bootstrap() {
   const trpc = app.get(TrpcRouter);
   app.use('/trpc', trpc.createExpressMiddleware());
 
-  // ✅ Lắng nghe trên tất cả network interface
+
   const PORT = process.env.PORT || 4000;
   await app.listen(PORT, '0.0.0.0');
   console.log(`🚀 Server ready at http://0.0.0.0:${PORT}/trpc`);

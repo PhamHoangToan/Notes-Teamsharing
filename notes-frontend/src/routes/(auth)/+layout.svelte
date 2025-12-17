@@ -4,7 +4,7 @@
 
   onMount(() => {
     const user = localStorage.getItem("user");
-    if (user) goto("/"); // Nếu đã đăng nhập thì về trang chính
+    if (user) goto("/"); 
   });
 </script>
 

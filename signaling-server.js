@@ -14,7 +14,7 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
-  console.log('👋 Client mới kết nối');
+  
 
   ws.on('message', (message) => {
     // Gửi message đến tất cả client khác
@@ -25,7 +25,7 @@ wss.on('connection', (ws) => {
     });
   });
 
-  ws.on('close', () => console.log('❌ Client ngắt kết nối'));
+  ws.on('close', () => console.log(' Client ngắt kết nối'));
 });
 
 server.listen(PORT, () => {

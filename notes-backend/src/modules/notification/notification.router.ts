@@ -7,7 +7,7 @@ export function createNotificationRouter(t, notificationService: NotificationSer
   return t.router({
     
     list: t.procedure.query(async ({ ctx }) => {
-      console.log('📨 [notification.list] Bắt đầu xử lý request...');
+      console.log(' [notification.list] Bắt đầu xử lý request...');
 
       if (!ctx.user?.id) {
         console.warn(' [notification.list] Thiếu ctx.user hoặc user.id:', ctx.user);

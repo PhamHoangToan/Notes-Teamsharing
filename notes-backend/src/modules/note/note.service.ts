@@ -82,11 +82,11 @@ async getNotesByTeam(teamId: string, viewerId?: string | null, viewerEmail?: str
     if (!viewerId && !viewerEmail)
       throw new Error("Access denied: chưa xác định người xem");
 
-    // ✅ Chủ note
+    //  Chủ note
     if (note.ownerId === viewerId || note.ownerId === viewerEmail)
       return note;
 
-    // ✅ Nếu là collaborator theo email → cho truy cập, KHÔNG CẦN kiểm tra team
+    //  Nếu là collaborator theo email → cho truy cập, KHÔNG CẦN kiểm tra team
     const collaboratorAccess = note.collaborators?.find(
       (c) => c.userId?.trim().toLowerCase() === viewerEmail?.trim().toLowerCase()
     );
@@ -159,7 +159,7 @@ async addCollaborator(noteId: string, userEmail: string, role: 'editor' | 'viewe
   const diff = dmp.diff_main(oldContent, newContent);
   dmp.diff_cleanupSemantic(diff);
 
-  // ✅ Chỉ lưu khi có khác biệt
+  //  Chỉ lưu khi có khác biệt
   await this.historyModel.create({
     noteId,
     editorId,
@@ -172,7 +172,7 @@ async addCollaborator(noteId: string, userEmail: string, role: 'editor' | 'viewe
   note.updatedAt = new Date();
   await note.save();
 
-  this.logger.log(`✅ [NoteService.saveSnapshot] Lưu snapshot cho note ${noteId}`);
+  this.logger.log(` [NoteService.saveSnapshot] Lưu snapshot cho note ${noteId}`);
   return { success: true };
 }
 
@@ -267,18 +267,18 @@ async getRecentNotesByUser(userId: string) {
 
   //  Restore note version
  async restoreVersion(noteId: string, historyId: string, restorerId?: string) {
-  this.logger.log(`🌀 [restoreVersion] Yêu cầu khôi phục noteId=${noteId}, historyId=${historyId}, restorerId=${restorerId || "unknown"}`);
+  this.logger.log(` [restoreVersion] Yêu cầu khôi phục noteId=${noteId}, historyId=${historyId}, restorerId=${restorerId || "unknown"}`);
 
   try {
     const history = await this.historyModel.findById(historyId);
     if (!history) {
-      this.logger.warn(`⚠️ [restoreVersion] Không tìm thấy historyId=${historyId}`);
+      this.logger.warn(` [restoreVersion] Không tìm thấy historyId=${historyId}`);
       throw new Error('History not found');
     }
 
     const note = await this.noteModel.findById(noteId);
     if (!note) {
-      this.logger.warn(`⚠️ [restoreVersion] Không tìm thấy noteId=${noteId}`);
+      this.logger.warn(` [restoreVersion] Không tìm thấy noteId=${noteId}`);
       throw new Error('Note not found');
     }
 
@@ -289,7 +289,7 @@ async getRecentNotesByUser(userId: string) {
     - Snapshot length: ${history.snapshot?.length || 0}
     - Note current length: ${note.content?.length || 0}`);
 
-    // 🧠 Lưu lại snapshot hiện tại (để có thể undo)
+    //  Lưu lại snapshot hiện tại (để có thể undo)
     await this.historyModel.create({
       noteId,
       editorId: restorerId ? new Types.ObjectId(restorerId) : undefined,
@@ -302,7 +302,7 @@ async getRecentNotesByUser(userId: string) {
     note.content = history.snapshot;
     note.updatedAt = new Date();
 
-    // 🧩 Cập nhật Yjs buffer (nếu có)
+    //  Cập nhật Yjs buffer (nếu có)
     if (note.yDoc) {
       try {
         const ydoc = new Y.Doc();
@@ -311,16 +311,16 @@ async getRecentNotesByUser(userId: string) {
         note.yDoc = Buffer.from(Y.encodeStateAsUpdate(ydoc));
         this.logger.log(`🧬 [restoreVersion] Yjs buffer được cập nhật.`);
       } catch (e) {
-        this.logger.error(`⚠️ [restoreVersion] Lỗi khi cập nhật Yjs buffer: ${e.message}`);
+        this.logger.error(` [restoreVersion] Lỗi khi cập nhật Yjs buffer: ${e.message}`);
       }
     }
 
     await note.save();
-    this.logger.log(`✅ [restoreVersion] Khôi phục thành công noteId=${noteId} từ historyId=${historyId}`);
+    this.logger.log(` [restoreVersion] Khôi phục thành công noteId=${noteId} từ historyId=${historyId}`);
 
     return { success: true, restoredAt: new Date() };
   } catch (err) {
-    this.logger.error(`❌ [restoreVersion] Lỗi khi khôi phục note:
+    this.logger.error(` [restoreVersion] Lỗi khi khôi phục note:
     ├─ noteId: ${noteId}
     ├─ historyId: ${historyId}
     └─ Lỗi: ${err.message}`);
@@ -451,11 +451,11 @@ async update(noteId: string, data: any) {
           diff,
         });
         this.logger.log(
-          `[NoteService.update] ✅ Lưu lịch sử cho noteId=${noteId}, editorId=${data.authorId}`,
+          `[NoteService.update]  Lưu lịch sử cho noteId=${noteId}, editorId=${data.authorId}`,
         );
       } else {
         this.logger.warn(
-          `[NoteService.update] ⚠️ Bỏ qua lưu lịch sử vì thiếu authorId (noteId=${noteId})`,
+          `[NoteService.update]  Bỏ qua lưu lịch sử vì thiếu authorId (noteId=${noteId})`,
         );
       }
     } else {
@@ -483,7 +483,7 @@ if (typeof data.content === 'string' && data.content.includes('@')) {
   if (usernames.length > 0) {
     this.logger.log(`[NoteService.update] Phát hiện mention trong nội dung note: ${usernames.join(', ')}`);
 
-    // 🔹 Lấy danh sách mention cũ trong DB
+    //  Lấy danh sách mention cũ trong DB
     const existingMentions = note.mentions?.map(m => m.toString()) || [];
 
     for (const username of usernames) {
@@ -509,7 +509,7 @@ if (typeof data.content === 'string' && data.content.includes('@')) {
           byUserId: data.authorId || 'unknown',
         });
 
-        this.logger.log(` [NoteService.update] ✅ Gửi thông báo mới cho @${username}`);
+        this.logger.log(` [NoteService.update]  Gửi thông báo mới cho @${username}`);
       } else {
         this.logger.verbose(` [NoteService.update] ⏩ Bỏ qua mention cũ: @${username}`);
       }
@@ -518,7 +518,7 @@ if (typeof data.content === 'string' && data.content.includes('@')) {
 }
 
 
-  // 🧹 Không xử lý mention tại đây nữa
+  //  Không xử lý mention tại đây nữa
   // (Logic mention sẽ được di chuyển sang CommentService hoặc mutation addComment)
 
   return updatedNote;

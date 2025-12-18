@@ -80,7 +80,7 @@ export class NotificationService {
 
   
   async markAsRead(notificationId: string) {
-    this.logger.log(`✅ [NotificationService] markAsRead(${notificationId})`);
+    this.logger.log(` [NotificationService] markAsRead(${notificationId})`);
     return this.notifModel.findByIdAndUpdate(
       notificationId,
       { isRead: true },

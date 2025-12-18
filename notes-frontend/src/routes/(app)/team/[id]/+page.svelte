@@ -56,14 +56,14 @@
         if (team && team.members) {
           const isMember = team.members.some((m) => m.userId === user.id);
           if (!isMember && user.id !== team.ownerId) {
-            alert("❌ Bạn không có quyền truy cập team này!");
+            alert(" Bạn không có quyền truy cập team này!");
             goto("/team");
             return;
           }
         }
 
        
-        console.log("📡 Fetching notes...");
+        console.log(" Fetching notes...");
         notes = await trpc.note.listByTeam.query({
   teamId,
   viewerId: user.id,
@@ -86,7 +86,7 @@
   
   async function addNoteToTeam() {
     if (!user || !teamId) {
-      alert("⚠️ Thiếu user hoặc teamId");
+      alert(" Thiếu user hoặc teamId");
       return;
     }
 
@@ -113,7 +113,7 @@
 {#if loading}
   <p class="p-6 text-gray-400">⏳ Đang tải team...</p>
 {:else if !team}
-  <p class="p-6 text-gray-400">❌ Không tìm thấy team này.</p>
+  <p class="p-6 text-gray-400"> Không tìm thấy team này.</p>
 {:else}
   <div class="p-6">
     <div class="flex justify-between items-center mb-6">

@@ -56,22 +56,22 @@ return {
   update,
 
   updateContent(html: string) {
-    console.log('📝 [noteStore.updateContent] Nhận content mới:', html.slice(0, 100) + '...');
+    console.log(' [noteStore.updateContent] Nhận content mới:', html.slice(0, 100) + '...');
     update((s) => ({ ...s, content: html }));
 
     clearTimeout(saveTimer);
-    console.log('🕓 [AutoSave] Schedule lưu sau 2s...');
+    console.log(' [AutoSave] Schedule lưu sau 2s...');
     saveTimer = setTimeout(autoSave, 2000);
   },
 
   setCurrentNote(note: any) {
-    console.log('📌 [noteStore.setCurrentNote] Thiết lập note hiện tại:', note?.id);
+    console.log(' [noteStore.setCurrentNote] Thiết lập note hiện tại:', note?.id);
     currentNote.set(note);
     update((s) => ({ ...s, currentNote: note, content: note.content || '' }));
   },
 
   reset() {
-    console.log('🔁 [noteStore.reset] Reset store');
+    console.log(' [noteStore.reset] Reset store');
     set({ currentNote: null, content: '', trpc });
     currentNote.set({ id: null, title: '', content: '', initialized: false });
   },

@@ -10,7 +10,7 @@ export class TeamService {
 
   constructor(
     @InjectModel(Team.name) private teamModel: Model<Team>,
-    private readonly notifService: NotificationService, // 👈 inject NotificationService
+    private readonly notifService: NotificationService, //  inject NotificationService
   ) {}
 
   // Tạo team mới

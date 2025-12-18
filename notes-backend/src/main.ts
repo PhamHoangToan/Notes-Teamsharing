@@ -8,7 +8,7 @@ import * as express from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Bật CORS — cho phép tất cả nguồn dùng trong quá trình dev
+  //  Bật CORS — cho phép tất cả nguồn dùng trong quá trình dev
   app.enableCors({
     origin: [
       'http://localhost:5173',       // Web dev local
@@ -21,21 +21,21 @@ async function bootstrap() {
     credentials: true
   });
 
-  // ✅ Express parser để xử lý JSON & form-data upload
+  //  Express parser để xử lý JSON & form-data upload
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
 
-  // ✅ Route upload riêng cho tRPC file upload
+  //  Route upload riêng cho tRPC file upload
   app.use('/trpc/file.upload', fileUploadMiddleware);
 
-  // ✅ Đăng ký tRPC endpoint (đặt sau CORS)
+  //  Đăng ký tRPC endpoint (đặt sau CORS)
   const trpc = app.get(TrpcRouter);
   app.use('/trpc', trpc.createExpressMiddleware());
 
 
   const PORT = process.env.PORT || 4000;
   await app.listen(PORT, '0.0.0.0');
-  console.log(`🚀 Server ready at http://0.0.0.0:${PORT}/trpc`);
+  console.log(` Server ready at http://0.0.0.0:${PORT}/trpc`);
 }
 
 bootstrap();

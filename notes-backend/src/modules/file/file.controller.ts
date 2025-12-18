@@ -22,14 +22,14 @@ export class FileController {
   constructor(private readonly fileService: FileService) {}
 
   // ============================================================
-  // 🔹 Lấy danh sách file theo noteId
+  //  Lấy danh sách file theo noteId
   // ============================================================
   @Get(':noteId')
   async getFilesByNoteId(@Param('noteId') noteId: string) {
-    this.logger.log(`📂 [GET] Yêu cầu lấy danh sách file cho noteId=${noteId}`);
+    this.logger.log(` [GET] Yêu cầu lấy danh sách file cho noteId=${noteId}`);
 
     if (!noteId) {
-      this.logger.warn('⚠️ Thiếu noteId trong request');
+      this.logger.warn(' Thiếu noteId trong request');
       throw new BadRequestException('Thiếu noteId');
     }
 
@@ -37,7 +37,7 @@ export class FileController {
       const files = await this.fileService.getFilesByNoteId(noteId);
 
       if (!files?.length) {
-        this.logger.warn(`⚠️ Không tìm thấy file nào cho noteId=${noteId}`);
+        this.logger.warn(` Không tìm thấy file nào cho noteId=${noteId}`);
         return [];
       }
 
@@ -46,7 +46,7 @@ export class FileController {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
-      this.logger.log(`✅ Trả về ${sortedFiles.length} file cho noteId=${noteId}`);
+      this.logger.log(` Trả về ${sortedFiles.length} file cho noteId=${noteId}`);
       sortedFiles.forEach((f, i) =>
         this.logger.debug(
           `🧾 [${i + 1}] ${f.fileName} | ${f.mimeType} | ${f.createdAt}`,
@@ -64,7 +64,7 @@ export class FileController {
       }));
     } catch (err) {
       this.logger.error(
-        `❌ [Controller] Lỗi khi lấy danh sách file cho noteId=${noteId}: ${err.message || err}`,
+        ` [Controller] Lỗi khi lấy danh sách file cho noteId=${noteId}: ${err.message || err}`,
       );
       this.logger.debug(err.stack);
       throw err;
@@ -72,7 +72,7 @@ export class FileController {
   }
 
   // ============================================================
-  // 🔹 Upload file
+  //  Upload file
   // ============================================================
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -83,10 +83,10 @@ export class FileController {
   ) {
     this.logger.log('📥 [UPLOAD] Nhận request upload file...');
     this.logger.log(`🧾 noteId: ${noteId}`);
-    this.logger.log(`👤 uploaderId: ${uploaderId}`);
+    this.logger.log(` uploaderId: ${uploaderId}`);
 
     if (!file) {
-      this.logger.error('❌ Không nhận được file upload!');
+      this.logger.error(' Không nhận được file upload!');
       throw new BadRequestException('Không có file nào được gửi lên');
     }
 
@@ -109,47 +109,47 @@ export class FileController {
         createdAt: result?.createdAt || new Date().toISOString(),
       };
 
-      this.logger.log('✅ [UPLOAD] Upload thành công!');
+      this.logger.log(' [UPLOAD] Upload thành công!');
       this.logger.debug(`🪣 S3 URL: ${response.s3Url}`);
-      this.logger.debug(`📁 File ID (DB): ${response._id}`);
+      this.logger.debug(` File ID (DB): ${response._id}`);
       this.logger.debug(`📜 fileName: ${response.fileName}`);
 
       return response;
     } catch (err) {
-      this.logger.error(`❌ [UPLOAD] Lỗi khi upload file: ${err.message || err}`);
+      this.logger.error(` [UPLOAD] Lỗi khi upload file: ${err.message || err}`);
       this.logger.debug(err.stack);
       throw err;
     }
   }
 
   // ============================================================
-  // 🔹 Xóa file theo ID
+  //  Xóa file theo ID
   // ============================================================
   @Delete(':id')
   async deleteFile(@Param('id') id: string) {
-    this.logger.log(`🗑️ [DELETE] Yêu cầu xóa file id=${id}`);
+    this.logger.log(` [DELETE] Yêu cầu xóa file id=${id}`);
 
     if (!id) {
-      this.logger.warn('⚠️ Thiếu fileId (id) trong request');
+      this.logger.warn(' Thiếu fileId (id) trong request');
       throw new BadRequestException('Thiếu fileId');
     }
 
     try {
-      // ⚠️ TODO: Thêm xác thực quyền người dùng tại đây nếu cần
+      //  TODO: Thêm xác thực quyền người dùng tại đây nếu cần
       // ví dụ: kiểm tra userId từ token JWT có trùng với chủ note/file không
 
       await this.fileService.deleteFile(id);
 
-      this.logger.log(`✅ [DELETE] Đã xóa file id=${id} thành công`);
+      this.logger.log(` [DELETE] Đã xóa file id=${id} thành công`);
       return { message: 'File deleted successfully', fileId: id };
     } catch (err) {
       if (err instanceof NotFoundException) {
-        this.logger.warn(`⚠️ [DELETE] Không tìm thấy file để xóa: id=${id}`);
+        this.logger.warn(` [DELETE] Không tìm thấy file để xóa: id=${id}`);
         throw new NotFoundException(`Không tìm thấy file với id=${id}`);
       }
 
       this.logger.error(
-        `❌ [DELETE] Lỗi khi xóa file id=${id}: ${err.message || err}`,
+        ` [DELETE] Lỗi khi xóa file id=${id}: ${err.message || err}`,
       );
       this.logger.debug(err.stack);
       throw err;

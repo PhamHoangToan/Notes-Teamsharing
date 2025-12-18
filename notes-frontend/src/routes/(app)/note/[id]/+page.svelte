@@ -36,10 +36,10 @@
   unsubscribe = page.subscribe(async ($page) => {
     const id = $page.params.id;
     if (id && id !== noteId) {
-      // 🔹 1. Load note từ server
+      //  1. Load note từ server
       await loadNote(id);
 
-      // 🔹 2. Sau khi load xong, kiểm tra và sửa <link> nếu có
+      //  2. Sau khi load xong, kiểm tra và sửa <link> nếu có
       // if (note?.content?.includes("<link")) {
       //   note.content = note.content
       //     .replace(/<link\b/gi, "<a")
@@ -50,9 +50,9 @@
       //       noteId: note._id,
       //       content: note.content,
       //     });
-      //     console.log("🧹 Đã làm sạch nội dung <link> trong DB");
+      //     console.log(" Đã làm sạch nội dung <link> trong DB");
       //   } catch (err) {
-      //     console.warn("⚠️ Không thể auto-fix nội dung DB:", err);
+      //     console.warn(" Không thể auto-fix nội dung DB:", err);
       //   }
       // }
     }
@@ -115,17 +115,13 @@
         },
       });
 
-      socket.on("connect", () => {
-        console.log("🟢 [Presence] Connected", socket.id);
-      });
-
       socket.on("presence:update", (users) => {
         onlineUsers = users;
-        console.log("👥 [Presence] Active users:", users);
+        console.log(" [Presence] Active users:", users);
       });
 
       socket.on("disconnect", () => {
-        console.log("🔴 [Presence] Disconnected");
+        console.log(" [Presence] Disconnected");
       });
 
       // --- Yjs fragment ---
@@ -168,7 +164,7 @@
 
       const div = document.createElement("div");
       div.appendChild(fragment.toDOM());
-      const htmlContent = div.innerHTML; // ✅ giữ nguyên định dạng xuống dòng
+      const htmlContent = div.innerHTML; //  giữ nguyên định dạng xuống dòng
 
       await trpc.note.update.mutate({
         noteId,
@@ -221,7 +217,7 @@
         userId: userIdToAdd,
         role: roleToAdd,
       });
-      alert("✅ Đã cấp quyền thành công!");
+      alert(" Đã cấp quyền thành công!");
       openCollaborators = false;
     } catch (err) {
       console.error(" [addCollaborator] Error:", err);
@@ -304,9 +300,9 @@
 
         <span class="text-sm text-gray-400">
           {#if syncing}
-            🔄 Đang đồng bộ...
+            Đang đồng bộ...
           {:else if lastSyncedAt}
-            ✅ Lưu lúc {lastSyncedAt}
+             Lưu lúc {lastSyncedAt}
           {:else}
             &nbsp;
           {/if}
@@ -362,7 +358,7 @@
       class="bg-gray-700 text-white px-3 py-1 rounded self-start"
       on:click={() => (openCollaborators = true)}
     >
-      👥 Cấp quyền
+       Cấp quyền
     </button>
 
     {#if openCollaborators}
@@ -429,11 +425,11 @@
     <CommentList {noteId} />
   </div>
 {:else}
-  <p class="text-center text-gray-400 mt-10">❌ Không tìm thấy ghi chú</p>
+  <p class="text-center text-gray-400 mt-10"> Không tìm thấy ghi chú</p>
 {/if}
 
 <style>
-  /* ✅ Giới hạn kích thước ảnh trong vùng soạn thảo (phía trên) */
+  /*  Giới hạn kích thước ảnh trong vùng soạn thảo (phía trên) */
 
   .note-scroll-area {
     overflow-y: auto;
@@ -456,13 +452,13 @@
   }
   .note-scroll-area {
     overflow-y: auto;
-    max-height: 80vh; /* ✅ Giới hạn vùng hiển thị, để scrollbar xuất hiện */
+    max-height: 80vh; /*  Giới hạn vùng hiển thị, để scrollbar xuất hiện */
     scroll-behavior: smooth;
     scrollbar-width: thin;
   }
 
   .note-scroll-area::-webkit-scrollbar {
-    width: 10px; /* ✅ to hơn để dễ thấy */
+    width: 10px; /*  to hơn để dễ thấy */
   }
 
   .note-scroll-area::-webkit-scrollbar-track {

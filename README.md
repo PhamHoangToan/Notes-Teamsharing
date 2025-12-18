@@ -1,23 +1,23 @@
-# 🧠 Notes Teamsharing
+#  Notes Teamsharing
 
 Ứng dụng ghi chú cộng tác **thời gian thực** được xây dựng bằng  
 **NestJS + tRPC + MongoDB + AWS S3 + SvelteKit 2 + TipTap + Yjs**
 
 ---
 
-## 🚀 Tính năng nổi bật
+##  Tính năng nổi bật
 
 - ✏️ **Trình soạn thảo TipTap** hỗ trợ định dạng văn bản phong phú, mentions, comments và đính kèm file.  
-- 🔄 **Cộng tác thời gian thực** với **Yjs + WebRTC Provider**.  
-- 👥 **Quản lý nhóm (Team)** và **phân quyền truy cập** linh hoạt (Owner / Editor / Viewer).  
+- **Cộng tác thời gian thực** với **Yjs + WebRTC Provider**.  
+-  **Quản lý nhóm (Team)** và **phân quyền truy cập** linh hoạt (Owner / Editor / Viewer).  
 - ☁️ **Lưu trữ file S3 (AWS)** cho avatar, hình ảnh, và tài liệu đính kèm.  
 - ⚡ **NestJS + tRPC** giúp giao tiếp giữa backend và frontend hoàn toàn type-safe.  
 - 🧾 **Lịch sử chỉnh sửa (NoteHistory)** và tính năng phục hồi phiên bản cũ.  
-- 🔔 **Thông báo realtime** qua WebSocket / tRPC subscription.
+-  **Thông báo realtime** qua WebSocket / tRPC subscription.
 
 ---
 
-## 🧩 Cấu trúc dự án
+##  Cấu trúc dự án
 
 ```bash
 Notes-Teamsharing/

@@ -14,12 +14,12 @@
 
     
     socket.on("notification:new", (notif: any) => {
-      console.log("🔔 [NotificationBell] Nhận thông báo mới:", notif);
+      console.log(" [NotificationBell] Nhận thông báo mới:", notif);
       notifications = [notif, ...notifications];
       unread++;
     });
 
-    // 🔄 Lấy danh sách thông báo hiện tại từ backend (nếu muốn preload)
+    // Lấy danh sách thông báo hiện tại từ backend (nếu muốn preload)
     try {
       const res = await trpc.notification.list.query();
       notifications = res || [];

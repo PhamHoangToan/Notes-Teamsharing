@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { trpc } from "$lib/trpc/client";
 
-  export let open = false;
+  //export let open = false;
   export let onClose: () => void;
 
   let activeTab = "account";
@@ -238,16 +238,22 @@
 </script>
 
 <!-- ==================== UI ==================== -->
-{#if open}
+
+
   <div
     class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
   >
     <div
-      class="bg-white w-[800px] h-[600px] rounded-lg shadow-lg flex relative text-gray-900 transition"
-    >
+  class="bg-white 
+         w-[95vw] max-w-[1100px] 
+         h-[90vh] max-h-[700px]
+         rounded-xl shadow-2xl 
+         flex relative"
+>
+
       <!-- Sidebar -->
       <div class="w-1/3 border-r border-gray-200 p-4 space-y-2 overflow-y-auto">
-        {#each [{ id: "account", label: "Account", icon: "⚙️" }, { id: "password", label: "Password", icon: "🔒" }, { id: "2fa", label: "2FA", icon: "🛡️" }, { id: "picture", label: "Profile Picture", icon: "👤" }, { id: "theme", label: "Theme", icon: "🎨" }, { id: "font", label: "Font", icon: "🅰️" }] as tab}
+        {#each [{ id: "account", label: "Account", icon: "⚙️" }, { id: "picture", label: "Profile Picture", icon: "👤" }, { id: "theme", label: "Theme", icon: "🎨" }, { id: "font", label: "Font", icon: "🅰️" }] as tab}
           <button
             class={`flex items-center w-full px-3 py-2 rounded-md hover:bg-gray-100 transition ${
               activeTab === tab.id ? "bg-gray-100 font-semibold" : ""
@@ -428,7 +434,9 @@
       </button>
     </div>
   </div>
-{/if}
+
+
+
 
 <style>
   :root {

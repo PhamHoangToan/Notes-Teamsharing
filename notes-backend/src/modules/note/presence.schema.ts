@@ -7,7 +7,7 @@ export class Presence extends Document {
   noteId!: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  userId!: Types.ObjectId; // 👈 Đúng kiểu Mongo ObjectId
+  userId!: Types.ObjectId; //  Đúng kiểu Mongo ObjectId
 
   @Prop({ required: true })
   connectionId!: string;
@@ -24,5 +24,5 @@ export class Presence extends Document {
 
 export const PresenceSchema = SchemaFactory.createForClass(Presence);
 
-// 👇 Tối ưu hiệu năng
+//  Tối ưu hiệu năng
 PresenceSchema.index({ noteId: 1, userId: 1 });

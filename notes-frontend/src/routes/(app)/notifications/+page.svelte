@@ -8,7 +8,7 @@
   let loading = true;
   let user: any = null;
 
-  // 🧠 Khi trang mount, tải danh sách thông báo
+  //  Khi trang mount, tải danh sách thông báo
   onMount(async () => {
     const stored = localStorage.getItem('user');
     if (!stored) return goto('/login');
@@ -17,13 +17,13 @@
     try {
       notifications = await trpc.notification.list.query();
     } catch (err) {
-      console.error('❌ [NotificationsPage] Lỗi load danh sách:', err);
+      console.error(' [NotificationsPage] Lỗi load danh sách:', err);
     } finally {
       loading = false;
     }
   });
 
-  // 🧩 Đánh dấu đã đọc + mở note
+  //  Đánh dấu đã đọc + mở note
   async function openNote(notif: any) {
     try {
       await trpc.notification.markAsRead.mutate({ id: notif._id });
@@ -33,14 +33,14 @@
         n._id === notif._id ? { ...n, isRead: true } : n
       );
     } catch (err) {
-      console.error('❌ [markAsRead] lỗi:', err);
+      console.error(' [markAsRead] lỗi:', err);
     }
 
     const noteId =
       typeof notif.noteId === 'object' ? notif.noteId._id : notif.noteId;
 
     if (!noteId) {
-      console.warn('⚠️ [openNote] Không tìm thấy noteId hợp lệ:', notif);
+      console.warn(' [openNote] Không tìm thấy noteId hợp lệ:', notif);
       return;
     }
 
@@ -59,7 +59,7 @@
   "
 >
   <h1 class="text-2xl font-semibold mb-4" style="color: var(--note-text-color);">
-    🔔 Thông báo của bạn
+     Thông báo của bạn
   </h1>
 
   {#if loading}
@@ -80,7 +80,7 @@
         >
           <div>
             <p class="font-medium">
-              {n.type === 'mention' ? '📣 Bạn được nhắc đến' : '💬 Bình luận mới'}
+              {n.type === 'mention' ? '📣 Bạn được nhắc đến' : ' Bình luận mới'}
             </p>
 
             <p class="text-sm opacity-80">

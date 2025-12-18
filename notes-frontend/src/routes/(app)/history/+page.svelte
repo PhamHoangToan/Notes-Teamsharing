@@ -7,7 +7,7 @@
   let notes: any[] = [];
   let loading = true;
 
-  /** 🧹 Xóa tag HTML và gom khoảng trắng */
+  /**  Xóa tag HTML và gom khoảng trắng */
   function sanitizeDiff(text: string): string {
     return (
       text
@@ -29,27 +29,27 @@
     try {
       const res = await trpc.note.recentByUser.query({ userId: user.id });
       notes = res || [];
-      console.log("✅ [HistoryPage] Notes with editors:", notes);
+      console.log(" [HistoryPage] Notes with editors:", notes);
     } catch (err) {
-      console.error("❌ [HistoryPage] Lỗi tải:", err);
+      console.error(" [HistoryPage] Lỗi tải:", err);
       alert("Không thể tải danh sách lịch sử ghi chú.");
     } finally {
       loading = false;
     }
   });
 
-  /** 🔁 Gọi API khôi phục version */
+  /**  Gọi API khôi phục version */
   async function restoreVersion(noteId: string, historyId: string) {
     if (!historyId) {
-      alert("⚠️ Không xác định được phiên bản để khôi phục.");
+      alert(" Không xác định được phiên bản để khôi phục.");
       return;
     }
 
-    const confirmRestore = confirm("⚠️ Bạn có chắc muốn khôi phục phiên bản này không?");
+    const confirmRestore = confirm(" Bạn có chắc muốn khôi phục phiên bản này không?");
     if (!confirmRestore) return;
 
     try {
-      console.log("🌀 [restoreVersion] Gửi yêu cầu khôi phục:", {
+      console.log(" [restoreVersion] Gửi yêu cầu khôi phục:", {
         noteId,
         historyId,
         restorerId: user?.id,
@@ -61,17 +61,17 @@
         restorerId: user?.id,
       });
 
-      console.log("✅ [restoreVersion] Thành công:", res);
+      console.log(" [restoreVersion] Thành công:", res);
 
-      alert("✅ Đã khôi phục thành công! Đang tải lại nội dung ghi chú...");
+      alert(" Đã khôi phục thành công! Đang tải lại nội dung ghi chú...");
 
-      // 👇 Chuyển sang trang ghi chú để reload nội dung mới
+      //  Chuyển sang trang ghi chú để reload nội dung mới
       goto(`/note/${noteId}?restored=${Date.now()}`);
 
     } catch (err: any) {
-      console.error("❌ [restoreVersion] Chi tiết lỗi:", err);
+      console.error(" [restoreVersion] Chi tiết lỗi:", err);
       alert(
-        `❌ Không thể khôi phục:\n${err?.data?.message || err?.message || "Lỗi không xác định"}`
+        ` Không thể khôi phục:\n${err?.data?.message || err?.message || "Lỗi không xác định"}`
       );
     }
   }
@@ -121,7 +121,7 @@
             {#each note.editors as editor}
               <div class="mb-4 border-t pt-3 border-dashed border-gray-400/30">
                 <p class="font-medium mb-1">
-                  👤 <b>{editor.username}</b>
+                   <b>{editor.username}</b>
                   <span class="text-xs opacity-70 ml-1">
                     ({editor.histories?.length || 0} lần chỉnh sửa)
                   </span>
@@ -137,7 +137,7 @@
                     "
                   >
                     <p class="text-xs mb-2 opacity-70">
-                      🕓 {new Date(h.createdAt).toLocaleString()}
+                       {new Date(h.createdAt).toLocaleString()}
                     </p>
 
                     <!-- Diff content -->
@@ -165,13 +165,13 @@
                       <p style="opacity: 0.6;">(Không có thay đổi nội dung)</p>
                     {/if}
 
-                    <!-- ✅ Nút khôi phục -->
+                    <!--  Nút khôi phục -->
                     <div class="mt-2 text-right">
                       <button
                         on:click={() => restoreVersion(note._id, h._id)}
                         class="px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 text-white"
                       >
-                        🔁 Khôi phục phiên bản này
+                         Khôi phục phiên bản này
                       </button>
                     </div>
                   </div>
@@ -179,7 +179,7 @@
               </div>
             {/each}
           {:else}
-            <p class="text-sm opacity-70">📝 Chưa có lịch sử chỉnh sửa cho ghi chú này.</p>
+            <p class="text-sm opacity-70"> Chưa có lịch sử chỉnh sửa cho ghi chú này.</p>
           {/if}
         </div>
       {/each}

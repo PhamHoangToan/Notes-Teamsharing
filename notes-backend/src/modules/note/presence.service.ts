@@ -11,7 +11,7 @@ export class PresenceService {
 
   async join(noteId: string, userId: string, connectionId: string, color: string) {
     if (!userId || userId === 'undefined') {
-      this.logger.warn(`⚠️ [join] userId bị undefined khi join note ${noteId}`);
+      this.logger.warn(` [join] userId bị undefined khi join note ${noteId}`);
       return null;
     }
 
@@ -25,7 +25,7 @@ export class PresenceService {
       existing.cursor = { position: 0, color };
       existing.lastSeen = new Date();
       await existing.save();
-      this.logger.log(`✅ ${userId} rejoined note ${noteId}`);
+      this.logger.log(` ${userId} rejoined note ${noteId}`);
       return existing;
     }
 

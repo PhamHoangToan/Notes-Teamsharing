@@ -18,10 +18,10 @@
     loading = true;
     try {
       await trpc.team.inviteByEmail.mutate({ teamId, email, role });
-      alert("✅ Đã thêm thành viên vào team!");
+      alert(" Đã thêm thành viên vào team!");
       dispatch("added");
     } catch (err) {
-      console.error("❌ [InviteModal] Lỗi:", err);
+      console.error(" [InviteModal] Lỗi:", err);
       alert("Không thể thêm thành viên!");
     } finally {
       loading = false;
@@ -29,7 +29,7 @@
   }
 </script>
 
-<!-- 🧩 Modal container -->
+<!--  Modal container -->
 <div
   class="rounded-lg p-6 shadow-lg w-96 transition-colors duration-300"
   style="

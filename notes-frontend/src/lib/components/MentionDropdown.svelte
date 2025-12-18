@@ -1,5 +1,5 @@
 <script lang="ts">
-  // ✅ Nhận users từ component cha (ví dụ CommentList hoặc NotePage)
+  //  Nhận users từ component cha (ví dụ CommentList hoặc NotePage)
   export let users: any[] = [];
   export let onSelect: (user: any) => void;
 </script>

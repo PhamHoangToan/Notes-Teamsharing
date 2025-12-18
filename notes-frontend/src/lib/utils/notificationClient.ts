@@ -7,7 +7,7 @@ export function connectNotificationSocket() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   if (!user?.id) {
-    console.warn("⚠️ Không tìm thấy user.id trong localStorage → bỏ qua socket");
+    console.warn(" Không tìm thấy user.id trong localStorage → bỏ qua socket");
     return;
   }
 

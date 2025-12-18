@@ -7,9 +7,9 @@ const config = {
 
   kit: {
     adapter: adapter({
-      pages: 'build',   // 👈 output webDir mà Capacitor cần
+      pages: 'build',   //  output webDir mà Capacitor cần
       assets: 'build',
-      fallback: 'index.html' // 👈 cần cho SPA routing (khi chạy trong app)
+      fallback: 'index.html' //  cần cho SPA routing (khi chạy trong app)
     }),
 
     alias: {

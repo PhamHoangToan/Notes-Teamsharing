@@ -29,5 +29,5 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Signaling server đang chạy tại ws://localhost:${PORT}`);
+  console.log(` Signaling server đang chạy tại ws://localhost:${PORT}`);
 });

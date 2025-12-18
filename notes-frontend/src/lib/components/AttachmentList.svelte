@@ -9,13 +9,13 @@
     try {
       files = await trpc.file.list.query({ noteId });
     } catch (err) {
-      console.error("❌ [AttachmentList] Lỗi tải file:", err);
+      console.error(" [AttachmentList] Lỗi tải file:", err);
     }
   });
 </script>
 
 <div class="mt-4 border-t pt-3 text-sm">
-  <h3 class="font-medium mb-3 flex items-center gap-2">📎 Tệp đính kèm</h3>
+  <h3 class="font-medium mb-3 flex items-center gap-2"> Tệp đính kèm</h3>
 
   {#if files.length === 0}
     <p class="text-gray-400 italic">Chưa có tệp nào được tải lên.</p>

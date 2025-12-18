@@ -14,7 +14,7 @@ export class FileService {
   ) {}
 
   // ============================================================
-  // 🔹 Upload file
+  //  Upload file
   // ============================================================
   async uploadFile(
     noteId: string,
@@ -23,9 +23,9 @@ export class FileService {
   ) {
     this.logger.log('📤 [FileService] Bắt đầu upload file lên S3...');
     this.logger.debug(`🧾 noteId=${noteId}`);
-    this.logger.debug(`👤 uploaderId=${uploaderId}`);
+    this.logger.debug(` uploaderId=${uploaderId}`);
     this.logger.debug(
-      `📎 file=${file.originalname}, type=${file.mimetype}, size=${file.size}`,
+      ` file=${file.originalname}, type=${file.mimetype}, size=${file.size}`,
     );
 
     try {
@@ -44,11 +44,11 @@ export class FileService {
         createdAt: new Date(),
       });
 
-      this.logger.log(`✅ [FileService] Lưu vào DB thành công: _id=${record._id}`);
+      this.logger.log(` [FileService] Lưu vào DB thành công: _id=${record._id}`);
       return record;
     } catch (err) {
       this.logger.error(
-        `❌ [FileService] Upload error: ${err.message || err}`,
+        ` [FileService] Upload error: ${err.message || err}`,
         err.stack,
       );
       throw err;
@@ -56,13 +56,13 @@ export class FileService {
   }
 
   // ============================================================
-  // 🔹 Lấy danh sách file theo noteId
+  //  Lấy danh sách file theo noteId
   // ============================================================
   async getFilesByNoteId(noteId: string) {
     this.logger.log(`📄 [FileService] Truy vấn file cho noteId=${noteId}`);
 
     if (!noteId || typeof noteId !== 'string') {
-      this.logger.warn(`⚠️ noteId không hợp lệ: ${noteId}`);
+      this.logger.warn(` noteId không hợp lệ: ${noteId}`);
       throw new Error('noteId không hợp lệ');
     }
 
@@ -73,7 +73,7 @@ export class FileService {
         .lean();
 
       this.logger.log(
-        `✅ [FileService] Tìm thấy ${files?.length || 0} file cho noteId=${noteId}`,
+        ` [FileService] Tìm thấy ${files?.length || 0} file cho noteId=${noteId}`,
       );
 
       if (files?.length) {
@@ -89,7 +89,7 @@ export class FileService {
       return files;
     } catch (err) {
       this.logger.error(
-        `❌ [FileService] Lỗi khi lấy file theo noteId=${noteId}: ${err.message}`,
+        ` [FileService] Lỗi khi lấy file theo noteId=${noteId}: ${err.message}`,
         err.stack,
       );
       throw err;
@@ -97,7 +97,7 @@ export class FileService {
   }
 
   // ============================================================
-  // 🔹 Lấy danh sách file (cơ bản)
+  //  Lấy danh sách file (cơ bản)
   // ============================================================
   async listFiles(noteId: string) {
     this.logger.log(`📜 [FileService] listFiles noteId=${noteId}`);
@@ -105,15 +105,15 @@ export class FileService {
   }
 
   // ============================================================
-  // 🔹 Xóa file theo ID
+  //  Xóa file theo ID
   // ============================================================
   async deleteFile(id: string): Promise<void> {
-    this.logger.log(`🗑️ [Service] Bắt đầu xóa file id=${id}`);
+    this.logger.log(` [Service] Bắt đầu xóa file id=${id}`);
 
     // 1️⃣ Tìm file trong DB
     const file = await this.fileModel.findById(id).exec();
     if (!file) {
-      this.logger.warn(`⚠️ [Service] Không tìm thấy file id=${id} trong DB`);
+      this.logger.warn(` [Service] Không tìm thấy file id=${id} trong DB`);
       throw new NotFoundException(`Không tìm thấy file với id=${id}`);
     }
 
@@ -125,13 +125,13 @@ export class FileService {
       if (s3Url) {
         this.logger.log(`🌐 [S3] Đang xóa file trên S3: ${s3Url}`);
         await this.s3Service.deleteFileByUrl(s3Url);
-        this.logger.log(`✅ [S3] Đã xóa file thành công khỏi S3`);
+        this.logger.log(` [S3] Đã xóa file thành công khỏi S3`);
       } else {
-        this.logger.warn(`⚠️ [S3] File id=${id} không có s3Url, bỏ qua bước xóa S3`);
+        this.logger.warn(` [S3] File id=${id} không có s3Url, bỏ qua bước xóa S3`);
       }
     } catch (s3Err) {
       this.logger.error(
-        `❌ [S3] Lỗi khi xóa file trên S3: ${s3Err.message}`,
+        ` [S3] Lỗi khi xóa file trên S3: ${s3Err.message}`,
         s3Err.stack,
       );
       // Không throw để vẫn xóa khỏi DB
@@ -140,10 +140,10 @@ export class FileService {
     // 3️⃣ Xóa record trong MongoDB
     try {
       await this.fileModel.findByIdAndDelete(id).exec();
-      this.logger.log(`✅ [DB] Đã xóa file id=${id} khỏi Database`);
+      this.logger.log(` [DB] Đã xóa file id=${id} khỏi Database`);
     } catch (dbErr) {
       this.logger.error(
-        `❌ [DB] Không thể xóa file id=${id}: ${dbErr.message}`,
+        ` [DB] Không thể xóa file id=${id}: ${dbErr.message}`,
         dbErr.stack,
       );
       throw dbErr;

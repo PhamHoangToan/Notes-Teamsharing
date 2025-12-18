@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   bundledWebRuntime: false,
   server: {
-    url: 'http://10.0.2.2:5173', // ✅ dùng địa chỉ này cho emulator Android
+    url: 'http://10.0.2.2:5173', //  dùng địa chỉ này cho emulator Android
     cleartext: true
   }
 };

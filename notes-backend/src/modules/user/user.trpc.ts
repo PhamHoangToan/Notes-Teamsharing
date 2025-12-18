@@ -84,7 +84,7 @@ export const userRouter = (userService: UserService) => {
     getProfile: t.procedure
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
-        console.log('👤 [userRouter.getProfile] Token nhận được:', input.token?.slice(0, 15) + '...');
+        console.log(' [userRouter.getProfile] Token nhận được:', input.token?.slice(0, 15) + '...');
         try {
           const user = await userService.verifyToken(input.token);
           console.log('[userRouter.getProfile] Xác thực thành công:', user);

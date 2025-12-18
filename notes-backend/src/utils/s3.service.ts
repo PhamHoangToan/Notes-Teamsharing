@@ -13,7 +13,7 @@ export class S3Service {
     this.region = this.config.get<string>("S3_REGION") as string;
     this.bucket = this.config.get<string>("S3_BUCKET") as string;
 
-    console.log("🚀 [S3Service] Initializing S3 Client...");
+    console.log(" [S3Service] Initializing S3 Client...");
     console.log("   - Bucket:", this.bucket);
     console.log("   - Region:", this.region);
 
@@ -76,11 +76,11 @@ export class S3Service {
       Key: key,
     };
 
-    this.logger.log(`🗑️ [S3Service] Xóa file key=${key} khỏi bucket=${this.bucketName}`);
+    this.logger.log(` [S3Service] Xóa file key=${key} khỏi bucket=${this.bucketName}`);
     await this.s3Client.send(new DeleteObjectCommand(params));
-    this.logger.log(`✅ [S3Service] Đã xóa file khỏi S3`);
+    this.logger.log(` [S3Service] Đã xóa file khỏi S3`);
   } catch (err) {
-    this.logger.error(`❌ [S3Service] Lỗi xóa file S3: ${err.message}`);
+    this.logger.error(` [S3Service] Lỗi xóa file S3: ${err.message}`);
     throw err;
   }
 }

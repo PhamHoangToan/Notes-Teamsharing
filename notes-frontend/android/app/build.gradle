@@ -24,7 +24,7 @@ android {
         }
     }
 
-    // ✅ Mặc định Java 17 cho module chính
+    //  Mặc định Java 17 cho module chính
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -49,10 +49,10 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
 }
 
-// ✅ Include cấu hình Capacitor (tự sinh)
+//  Include cấu hình Capacitor (tự sinh)
 apply from: 'capacitor.build.gradle'
 
-// ✅ Sau khi include, ép lại toàn bộ project về Java 17
+//  Sau khi include, ép lại toàn bộ project về Java 17
 afterEvaluate {
     tasks.withType(JavaCompile).configureEach {
         sourceCompatibility = JavaVersion.VERSION_17

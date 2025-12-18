@@ -17,7 +17,7 @@
       "$components/*": ["src/lib/components/*"]
     }
   },
-  // 🧩 Bắt buộc thêm include cho file khai báo TipTap của bạn
+  //  Bắt buộc thêm include cho file khai báo TipTap của bạn
   "include": [
     "src/**/*.ts",
     "src/**/*.svelte",

@@ -14,7 +14,7 @@
     try {
       teams = await trpc.team.findByOwner.query({ ownerId: user.id });
     } catch (err) {
-      console.error("❌ Lỗi load teams:", err);
+      console.error(" Lỗi load teams:", err);
     } finally {
       loading = false;
     }
@@ -44,10 +44,10 @@
             </span>
           </div>
           <div class="mt-2 text-sm text-gray-600">
-            👥 {team.members?.length || 0} thành viên
+             {team.members?.length || 0} thành viên
           </div>
         </div>
       {/each}
     </div>
-  {/if} <!-- ✅ đóng block if đúng chỗ -->
+  {/if} <!--  đóng block if đúng chỗ -->
 </div>

@@ -35,8 +35,8 @@ module.exports = {
     },
   },
   plugins: [
-    require('@tailwindcss/typography'), // 🧩 Hỗ trợ prose cho TipTap
-    require('@tailwindcss/forms'), // 🧠 Tối ưu input/textarea
+    require('@tailwindcss/typography'), //  Hỗ trợ prose cho TipTap
+    require('@tailwindcss/forms'), //  Tối ưu input/textarea
   ],
   darkMode: 'class', // 🌓 hỗ trợ dark mode nếu cần
 };

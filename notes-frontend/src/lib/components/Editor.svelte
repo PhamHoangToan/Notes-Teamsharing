@@ -15,7 +15,7 @@
   export let ydoc: any;
   export let provider: any;
   export let content: string = "";
-  export let note: any = null; // 👈 thêm prop note (có createdAt, title, ...)
+  export let note: any = null; //  thêm prop note (có createdAt, title, ...)
   export let socket: any;
   export let userColor: string;
   let noteFiles: {
@@ -76,7 +76,7 @@
         (f: any) => !f.mimeType?.startsWith("image/")
       );
 
-      // ✅ Danh sách ảnh (thêm f._id)
+      //  Danh sách ảnh (thêm f._id)
       noteImages = imageFiles.map((f: any) => ({
         id: f._id, // <-- Quan trọng
         url: typeof f.s3Url === "string" ? f.s3Url : f.s3Url?.url || f.url || null,
@@ -85,7 +85,7 @@
         createdAt: f.createdAt || new Date().toISOString(),
       }));
 
-      // ✅ Danh sách file khác (thêm f._id)
+      //  Danh sách file khác (thêm f._id)
       noteFiles = otherFiles.map((f: any) => ({
         id: f._id, // <-- Quan trọng
         url: typeof f.s3Url === "string" ? f.s3Url : f.s3Url?.url || f.url || null,
@@ -95,12 +95,12 @@
         fileSize: f.fileSize || 0,
       }));
 
-      console.log("🗂️ [Files] Loaded:", {
+      console.log(" [Files] Loaded:", {
         images: noteImages.length,
         files: noteFiles.length,
       });
     } catch (err) {
-      console.error("❌ [Attachments] Lỗi tải danh sách tệp:", err);
+      console.error("[Attachments] Lỗi tải danh sách tệp:", err);
       noteImages = [];
       noteFiles = [];
     }
@@ -112,7 +112,7 @@
   }
   // ==================== MERGE NOTE + IMAGES + FILE LINKS ====================
   async function loadNoteContent() {
-    // ✅ 1. Sửa lỗi thẻ <link> -> <a>
+    //  1. Sửa lỗi thẻ <link> -> <a>
     if (content) {
       content = content
         .replace(/<link\b/gi, "<a")
@@ -121,14 +121,14 @@
 
     await loadNoteAttachments();
 
-    // ✅ 2. Tạo object nội dung text
+    //  2. Tạo object nội dung text
     const noteContent = {
       type: "text",
       createdAt: note?.createdAt || new Date().toISOString(),
       html: content,
     };
 
-    // ✅ 3. Gộp tất cả vào timeline (Thêm 'id' vào item ảnh và file)
+    //  3. Gộp tất cả vào timeline (Thêm 'id' vào item ảnh và file)
     timelineItems = [
       noteContent,
       ...noteImages.map((img) => ({
@@ -151,21 +151,21 @@
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    console.log("🧩 [Timeline] Combined items:", timelineItems);
+    console.log(" [Timeline] Combined items:", timelineItems);
   }
 
   // ==================== INIT EDITOR ====================
   onMount(async () => {
-    console.log("🧠 [Editor] Mounting TipTap:", noteId);
-    await loadNoteContent(); // 👈 gọi hàm mới (đã gộp nội dung + ảnh)
+    console.log(" [Editor] Mounting TipTap:", noteId);
+    await loadNoteContent(); //  gọi hàm mới (đã gộp nội dung + ảnh)
 
     if (!ydoc || !provider) {
-      console.error("⚠️ [Editor] Missing ydoc/provider props!");
+      console.error(" [Editor] Missing ydoc/provider props!");
       return;
     }
 
     provider.on("status", (e: any) => {
-      console.log("🔌 [Yjs WebRTC] Connection status:", e.status);
+      console.log(" [Yjs WebRTC] Connection status:", e.status);
     });
 
     try {
@@ -191,7 +191,7 @@
             HTMLAttributes: { class: "mention" },
             suggestion: {
               char: "@",
-              items: async ({ query }) => {
+              items: async ({ query }: { query: string }) => {
                 try {
                   const res = await trpc?.user?.searchByName?.query({
                     keyword: query || "",
@@ -203,21 +203,21 @@
                     })) ?? []
                   );
                 } catch (err) {
-                  console.error("💬 [Mention Error]:", err);
+                  console.error(" [Mention Error]:", err);
                   return [];
                 }
               },
               render: () => {
                 let popup: HTMLDivElement | null = null;
                 return {
-                  onStart: (props) => {
+                  onStart: (props: { x: number; y: number }) => {
                     popup = document.createElement("div");
                     popup.className = "mention-popup";
                     updatePopup(props);
                     document.body.appendChild(popup);
                   },
                   onUpdate: updatePopup,
-                  onKeyDown: (props) => {
+                  onKeyDown: (props: { event: KeyboardEvent }) => {
                     if (props.event.key === "Escape") {
                       popup?.remove();
                       popup = null;
@@ -241,7 +241,12 @@
                     el.addEventListener("click", () => {
                       props.command({ id: item.id, label: item.label });
                  });
-                    popup.appendChild(el);
+                   let popup: HTMLDivElement | null = document.querySelector('#popup');
+
+if (popup) {
+  popup.appendChild(el);
+}
+
                   });
                   const { from } = props.range;
                   const coords = props.editor.view.coordsAtPos(from);
@@ -268,7 +273,7 @@
         },
       });
 
-      console.log("✅ [Editor] TipTap initialized!");
+      console.log(" [Editor] TipTap initialized!");
       if (content && editor) {
         editor.commands.setContent(content);
       }
@@ -284,7 +289,7 @@
         });
       });
     } catch (err) {
-      console.error("❌ [Editor] Error initializing TipTap:", err);
+      console.error(" [Editor] Error initializing TipTap:", err);
     }
   });
 
@@ -322,15 +327,15 @@
 
       if (mimeType.startsWith("image/")) {
         editor?.chain().focus().setImage({ src: imageUrl, alt: fileName }).run();
-        console.log("✅ Đã chèn ảnh vào editor!");
+        console.log(" Đã chèn ảnh vào editor!");
       } else {
-        console.log("📎 Đã thêm tệp, đang làm mới timeline...");
+        console.log(" Đã thêm tệp, đang làm mới timeline...");
       }
 
       // Reload timeline sau upload
       await loadNoteContent();
     } catch (err) {
-      console.error("❌ [Upload] Lỗi upload file:", err);
+      console.error(" [Upload] Lỗi upload file:", err);
       alert("Không thể upload file.");
     }
   }
@@ -338,7 +343,7 @@
   // ==================== SỬA LỖI: Bổ sung hàm xóa ====================
   async function deleteAttachment(fileId: string) {
     if (!fileId) {
-      console.error("❌ [Delete] Missing fileId");
+      console.error(" [Delete] Missing fileId");
       return;
     }
     if (!confirm("Bạn có chắc muốn xóa tệp này?")) {
@@ -359,24 +364,24 @@
         throw new Error(`HTTP ${res.status} - ${errorText}`);
       }
 
-      console.log("✅ [File] Đã xóa tệp:", fileId);
+      console.log(" [File] Đã xóa tệp:", fileId);
 
       // Tải lại danh sách tệp và cập nhật timeline
       await loadNoteContent();
     } catch (err) {
-      console.error("❌ [Delete] Lỗi xóa tệp:", err);
+      console.error(" [Delete] Lỗi xóa tệp:", err);
       alert("Đã xảy ra lỗi khi xóa tệp.");
     }
   }
 
   // ==================== CLEANUP ====================
   function cleanupEditor() {
-    console.log("🧹 [Editor] Destroying TipTap instance...");
+    console.log(" [Editor] Destroying TipTap instance...");
     try {
       editor?.destroy?.();
       editor = null;
     } catch (err) {
-      console.error("⚠️ [Editor] Error destroying editor:", err);
+      console.error(" [Editor] Error destroying editor:", err);
     }
   }
 
@@ -389,7 +394,7 @@
     on:click={() => fileInput.click()}
     class="p-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
   >
-    📎 Thêm tệp
+     Thêm tệp
   </button>
   <input
     type="file"
@@ -449,11 +454,11 @@
   <div
     class="note-timeline-file-wrapper group relative w-fit"
     on:click={(e) => {
-      if (e.target.closest("button")) return; // ⛔ tránh click vào nút xóa
+      if (e.target.closest("button")) return; //  tránh click vào nút xóa
       window.open(item.url, "_blank");
     }}
   >
-    <!-- 🗑️ Nút xóa -->
+    <!--  Nút xóa -->
     <button
       on:click={() => deleteAttachment(item.id)}
       class="delete-btn"
@@ -475,7 +480,7 @@
       </svg>
     </button>
 
-    <!-- 📁 Nội dung file -->
+    <!--  Nội dung file -->
     <div
       class="note-timeline-file flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition w-[240px]"
     >
@@ -511,8 +516,8 @@
   {/each}
 </div>
 <style>
-  /* ✅ Giới hạn kích thước ảnh trong vùng soạn thảo (phía trên) */
-  /* ✅ Giới hạn kích thước ảnh trong vùng soạn thảo (phía trên) */
+  /*  Giới hạn kích thước ảnh trong vùng soạn thảo (phía trên) */
+  /*  Giới hạn kích thước ảnh trong vùng soạn thảo (phía trên) */
 .ProseMirror img {
   max-width: 200px !important;
   max-height: 150px !important;
@@ -558,7 +563,7 @@
   background-color: color-mix(in srgb, var(--note-bg) 80%, var(--note-text-color));
 }
 
-/* 🖼️ Timeline ảnh */
+/*  Timeline ảnh */
 .note-timeline-image img {
   max-width: 200px !important;
   max-height: 150px !important;
@@ -579,7 +584,7 @@
   position: relative;
 }
 
-/* 📁 Timeline file */
+/*  Timeline file */
 .note-timeline-file {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -593,7 +598,7 @@
   transform: translateY(-1px);
 }
 
-/* 🗑️ Nút xóa tệp / ảnh */
+/*  Nút xóa tệp / ảnh */
 .delete-btn {
   position: absolute;
   top: 6px;
@@ -640,7 +645,7 @@
   color: white;
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.15s ease;
-  z-index: 10; /* 🧩 đảm bảo nổi lên trên */
+  z-index: 10; /*  đảm bảo nổi lên trên */
 }
 
 .group:hover .delete-btn {

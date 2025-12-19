@@ -6,7 +6,6 @@
 
   import { currentNote } from "$lib/stores/noteStore";
   import { settingsModalOpen } from "$lib/stores/settingsModal";
-
   import NotificationBell from "$lib/components/NotificationBell.svelte";
   import CreateTeamModal from "./CreateTeamModal.svelte";
 
@@ -18,49 +17,98 @@
 
   let user: any = null;
   let teams: any[] = [];
+
   let loadingNotes = true;
   let loadingTeams = true;
 
- 
-  $: personal = $sidebarNotes.filter((n) => n.teamId == null);
+  const closeUserMenu = () => (userMenuOpen = false);
 
-  function notesByTeam(list: any[], teamId: string) {
-    return list.filter((n) => String(n.teamId) === String(teamId));
+  // ===== Helpers (QUAN TRỌNG) =====
+  function getNoteId(n: any) {
+    return n?._id ?? n?.id ?? null;
   }
 
-  onMount(async () => {
-    const stored = localStorage.getItem("user");
-    if (stored) user = JSON.parse(stored);
+  function getNoteTeamId(n: any) {
+    // backend có thể trả teamId hoặc trả team object
+    return n?.teamId ?? n?.team?._id ?? n?.team?.id ?? null;
+  }
 
-    if (!user) {
-      goto("/login");
-      return;
-    }
+  function normalizeNote(note: any, fallbackTeamId?: string | null) {
+    const _id = note?._id ?? note?.id;
+    const id = note?.id ?? note?._id;
 
-    try {
-      const fetchedNotes = await trpc.note.listForSidebar.query({ userId: user.id });
-      setSidebarNotes(fetchedNotes);
-      console.log("[Sidebar] Loaded notes =", fetchedNotes.length);
-    } catch (err) {
-      console.error("[Sidebar] Load notes error:", err);
-    } finally {
-      loadingNotes = false;
-    }
+    // Không ép teamId cho note riêng.
+    // Chỉ bổ sung teamId nếu note thiếu teamId mà bạn truyền fallbackTeamId (dùng cho note team).
+    const teamId =
+      note?.teamId ?? (fallbackTeamId != null ? fallbackTeamId : undefined);
 
-    try {
-      const myTeams = await trpc.team.findByOwner.query({ ownerId: user.id });
-      let sharedTeams = await trpc.team.findByMember.query({ userId: user.id });
-      sharedTeams = sharedTeams.filter((t) => t.ownerId !== user.id);
-      teams = [...myTeams, ...sharedTeams];
-    } catch (err) {
-      console.error("[Sidebar] Load teams error:", err);
-    } finally {
-      loadingTeams = false;
-    }
+    return {
+      ...note,
+      _id,
+      id,
+      ...(teamId !== undefined ? { teamId } : {})
+    };
+  }
 
-    const closeMenu = () => (userMenuOpen = false);
-    window.addEventListener("click", closeMenu);
-    return () => window.removeEventListener("click", closeMenu);
+  function notesByTeam(teamId: string) {
+    return $sidebarNotes.filter((n: any) => String(getNoteTeamId(n)) === String(teamId));
+  }
+
+  function personalNotes() {
+    // FIX: phải dùng getNoteTeamId để không bị lệch khi backend trả team object
+    return $sidebarNotes.filter((n: any) => getNoteTeamId(n) == null);
+  }
+
+  onMount(() => {
+    const onNoteCreated = (e: any) => {
+      // Cho phép trang khác tạo note (team/personal) rồi bắn event để sidebar update ngay
+      const note = e?.detail?.note;
+      const teamId = e?.detail?.teamId ?? null;
+      if (!note) return;
+
+      upsertSidebarNote(normalizeNote(note, teamId));
+    };
+
+    (async () => {
+      const stored = localStorage.getItem("user");
+      if (stored) user = JSON.parse(stored);
+
+      if (!user) {
+        goto("/login");
+        return;
+      }
+
+      // Load notes for sidebar
+      try {
+        const fetchedNotes = await trpc.note.listForSidebar.query({ userId: user.id });
+        setSidebarNotes(fetchedNotes);
+        console.log("[Sidebar] Loaded notes =", fetchedNotes.length);
+      } catch (err) {
+        console.error("[Sidebar] Load notes error:", err);
+      } finally {
+        loadingNotes = false;
+      }
+
+      // Load teams
+      try {
+        const myTeams = await trpc.team.findByOwner.query({ ownerId: user.id });
+        let sharedTeams = await trpc.team.findByMember.query({ userId: user.id });
+        sharedTeams = sharedTeams.filter((t: any) => t.ownerId !== user.id);
+        teams = [...myTeams, ...sharedTeams];
+      } catch (err) {
+        console.error("[Sidebar] Load teams error:", err);
+      } finally {
+        loadingTeams = false;
+      }
+
+      window.addEventListener("click", closeUserMenu);
+      window.addEventListener("note:created", onNoteCreated);
+    })();
+
+    return () => {
+      window.removeEventListener("click", closeUserMenu);
+      window.removeEventListener("note:created", onNoteCreated);
+    };
   });
 
   const handleLogout = () => {
@@ -73,39 +121,59 @@
 
     try {
       const note = getStore(currentNote);
+      console.log(" [AddNote] currentNote =", note);
 
-      // lưu note hiện tại nếu có
       if (note?.initialized && note?.id) {
+        console.log(" [AddNote] Updating current note BEFORE create", {
+          noteId: note.id,
+          title: note.title
+        });
+
         await trpc.note.update.mutate({
           noteId: note.id,
           title: note.title?.trim() || "Untitled",
-          content: note.content || "",
+          content: note.content || ""
         });
+
+        console.log(" [AddNote] Update current note DONE");
+      } else {
+        console.log("ℹ [AddNote] No current note to update");
       }
 
-      // tạo note mới (nhớ truyền teamId nếu backend bắt buộc)
+      console.log(" [AddNote] Creating NEW note...");
       const newNote = await trpc.note.create.mutate({
         title: "Untitled",
-        teamId: "default-team-id",
         ownerId: user.id,
-        content: "Welcome to Notejoy",
+        content: "Welcome to Notejoy"
       });
 
-      upsertSidebarNote(newNote); 
+      console.log(" [AddNote] New note CREATED:", newNote);
+
+      // FIX: normalize id/_id trước khi upsert để đảm bảo store match đúng
+      upsertSidebarNote(normalizeNote(newNote));
+
+      console.log(" [AddNote] Sidebar notes total =", getStore(sidebarNotes).length);
+
       menuOpen = false;
 
-      const id = newNote?._id || newNote?.id;
+      const id = getNoteId(newNote);
+      console.log(" [AddNote] Navigate to noteId =", id);
+
       if (id) goto(`/note/${id}`);
+      else console.error(" [AddNote] New note has NO ID", newNote);
     } catch (err) {
-      console.error("🔴 [AddNote] ERROR:", err);
+      console.error(" [AddNote] ERROR:", err);
     }
   };
 </script>
 
 <!-- ====================== SIDEBAR ====================== -->
-<div class="h-full w-full flex flex-col transition-colors duration-300">
-
-  <div>
+<aside
+  class="w-64 h-screen flex flex-col transition-colors duration-300 overflow-hidden"
+  style="background-color: var(--sidebar-bg); color: var(--sidebar-text-color);"
+>
+  <!-- ================= TOP ================= -->
+  <div class="flex flex-col flex-1 min-h-0">
     <div class="flex items-center justify-between p-4">
       <h1 class="text-xl font-semibold">notejoy</h1>
       <NotificationBell />
@@ -126,6 +194,7 @@
           <button class="block w-full px-4 py-2 text-left hover:bg-gray-100" on:click={createNote}>
             Add Note
           </button>
+
           <button
             class="block w-full px-4 py-2 text-left hover:bg-gray-100"
             on:click={() => {
@@ -146,18 +215,19 @@
       />
     </div>
 
-    <!-- NAV -->
-    <nav class="mt-5 px-4 space-y-1 text-sm flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-2">
+    <!-- ================= NAV (SCROLL AREA) ================= -->
+    <nav class="mt-5 px-4 space-y-1 text-sm flex-1 min-h-0 overflow-y-auto pr-2 sidebar-scroll">
+      <a class="flex items-center gap-2 p-2 rounded hover:bg-gray-700">
+        <i class="bi bi-star-fill text-yellow-400"></i>
+        Starred
+      </a>
 
-      <div class="flex items-center gap-2 p-2 rounded hover:bg-gray-700">
-        <i class="bi bi-star-fill text-yellow-400"></i> Starred
-      </div>
+      <a class="flex items-center gap-2 p-2 rounded hover:bg-gray-700" on:click={() => goto("/history")}>
+        <i class="bi bi-clock"></i>
+        Recent
+      </a>
 
-      <div class="flex items-center gap-2 p-2 rounded hover:bg-gray-700" on:click={() => goto("/history")}>
-        <i class="bi bi-clock"></i> Recent
-      </div>
-
-      <!-- LIBRARIES -->
+      <!-- ================= LIBRARIES ================= -->
       <div class="mt-4">
         <p class="text-gray-400 uppercase text-xs mb-1">Libraries</p>
 
@@ -171,47 +241,45 @@
           </div>
 
           <div class="ml-6">
-            {#each personal as note (note._id || note.id)}
-              <button
-                type="button"
-                class="w-full text-left flex items-center gap-2 p-2 rounded hover:bg-gray-700 ml-3"
+            {#each personalNotes() as note (note._id || note.id)}
+              <a
+                class="flex items-center gap-2 p-2 rounded hover:bg-gray-700 ml-3"
                 on:click={() => goto(`/note/${note._id || note.id}`)}
               >
                 <i class="bi bi-file-earmark-text"></i>
                 {note.title || "Untitled"}
-              </button>
+              </a>
             {/each}
 
-            {#if personal.length === 0}
+            {#if personalNotes().length === 0}
               <p class="text-xs text-gray-500 ml-3">No personal notes</p>
             {/if}
           </div>
 
           <!-- TEAMS -->
-          {#each teams as team (team._id)}
+          {#each teams as team (team._id || team.id)}
+            {@const teamId = team._id || team.id}
+
             <div
               class="flex items-center gap-2 p-2 rounded hover:bg-gray-700 mt-3 font-semibold"
-              on:click={() => goto(`/team/${team._id}`)}
+              on:click={() => goto(`/team/${teamId}`)}
             >
               <i class="bi bi-folder2-open"></i>
               {team.name}
             </div>
 
-            {@const teamNotes = notesByTeam($sidebarNotes, team._id)}
-
             <div class="ml-6">
-              {#each teamNotes as note (note._id || note.id)}
-                <button
-                  type="button"
-                  class="w-full text-left flex items-center gap-2 p-2 rounded hover:bg-gray-700 ml-3"
+              {#each notesByTeam(String(teamId)) as note (note._id || note.id)}
+                <a
+                  class="flex items-center gap-2 p-2 rounded hover:bg-gray-700 ml-3"
                   on:click={() => goto(`/note/${note._id || note.id}`)}
                 >
                   <i class="bi bi-file-earmark-text"></i>
                   {note.title || "Untitled"}
-                </button>
+                </a>
               {/each}
 
-              {#if teamNotes.length === 0}
+              {#if notesByTeam(String(teamId)).length === 0}
                 <p class="text-xs text-gray-500 ml-3">No team notes</p>
               {/if}
             </div>
@@ -221,12 +289,16 @@
     </nav>
   </div>
 
-  <!-- USER MENU -->
+  <!-- ================= USER MENU ================= -->
   <div
     class="relative border-t border-gray-700 p-4 flex items-center gap-3 cursor-pointer"
     on:click|stopPropagation={() => (userMenuOpen = !userMenuOpen)}
   >
-    <img src={user?.avatarUrl || "https://i.pravatar.cc/40"} class="w-10 h-10 rounded-full object-cover" />
+    <img
+      src={user?.avatarUrl || "https://i.pravatar.cc/40"}
+      class="w-10 h-10 rounded-full object-cover"
+      alt="avatar"
+    />
 
     <div class="flex-1">
       <p class="font-semibold text-sm">{user?.username}</p>
@@ -251,4 +323,22 @@
       </div>
     {/if}
   </div>
-</div>
+</aside>
+
+<style>
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+</style>

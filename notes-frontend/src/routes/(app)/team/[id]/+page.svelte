@@ -4,6 +4,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import InviteModal from "$lib/components/InviteModal.svelte";
+import { upsertSidebarNote } from "$lib/stores/sidebarNotes";
 
   let teamId = "";
   let team: any = null;
@@ -85,28 +86,45 @@
 
   
   async function addNoteToTeam() {
-    if (!user || !teamId) {
-      alert(" Thiếu user hoặc teamId");
-      return;
-    }
-
-    try {
-      const payload = {
-        title: "Untitled",
-        content: "Welcome to team note!",
-        teamId,
-        ownerId: user.id,
-      };
-      console.log(" Tạo note:", payload);
-
-      const newNote = await trpc.note.create.mutate(payload);
-      console.log("Note created:", newNote);
-
-      notes = [newNote, ...notes];
-    } catch (err) {
-      console.error(" [addNoteToTeam] Lỗi:", err);
-    }
+  if (!user || !teamId) {
+    alert("Thiếu user hoặc teamId");
+    return;
   }
+
+  try {
+    const payload = {
+      title: "Untitled",
+      content: "Welcome to team note!",
+      teamId,
+      ownerId: user.id,
+    };
+    console.log("Tạo note:", payload);
+
+    const created = await trpc.note.create.mutate(payload);
+    console.log("Note created:", created);
+
+    //  Normalize để sidebar luôn nhận đúng id/_id + teamId
+    const newNote = {
+      ...created,
+      _id: created?._id ?? created?.id,
+      id: created?.id ?? created?._id,
+      teamId: created?.teamId ?? teamId,
+    };
+
+    //  1) Update list trong TeamPage
+    notes = [newNote, ...notes];
+
+    //  2) Update sidebar store (đây là cái bạn thiếu)
+    upsertSidebarNote(newNote);
+
+    //  3) (optional) nhảy sang note mới tạo luôn
+    const id = newNote._id || newNote.id;
+    if (id) goto(`/note/${id}`);
+  } catch (err) {
+    console.error("[addNoteToTeam] Lỗi:", err);
+  }
+}
+
 </script>
 
 

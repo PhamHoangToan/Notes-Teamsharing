@@ -9,6 +9,7 @@
   import * as Y from "yjs";
   import { currentNote, noteStore } from "$lib/stores/noteStore";
   import { io, Socket } from "socket.io-client";
+import { upsertSidebarNote } from "$lib/stores/sidebarNotes";
 
   // =============================== STATE ===============================
   let ydoc: Y.Doc | null = null;
@@ -183,17 +184,33 @@
   }
 
   async function saveTitleNow() {
-    if (!noteId || !note?.title) return;
-    try {
-      await trpc.note.update.mutate({ noteId, title: note.title });
-      lastSyncedAt = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch (err) {
-      console.error(" [saveTitleNow] Failed:", err);
-    }
+  if (!noteId) return;
+
+  const title = (note?.title || "").trim();
+  if (!title) return;
+
+  try {
+    const updated = await trpc.note.update.mutate({ noteId, title });
+
+    note = { ...note, ...updated };
+
+    upsertSidebarNote(updated);
+
+    noteStore.setCurrentNote({
+      id: noteId,
+      title: note.title,
+      content: note.content || "",
+    });
+
+    lastSyncedAt = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (err) {
+    console.error(" [saveTitleNow] Failed:", err);
   }
+}
+
 
   function cleanupYjs() {
     provider?.destroy();

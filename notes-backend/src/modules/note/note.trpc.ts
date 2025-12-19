@@ -13,14 +13,16 @@ export const noteRouter = (noteService: NoteService) => {
 
 
     // Create
-    create: t.procedure
-      .input(z.object({
-        title: z.string(),
-        teamId: z.string(),
-        ownerId: z.string(),
-        content: z.string().optional(),
-      }))
-      .mutation(({ input }) => noteService.createNote(input)),
+   create: t.procedure
+  .input(
+    z.object({
+      title: z.string(),
+      ownerId: z.string(),
+      content: z.string().optional(),
+      teamId: z.string().optional().nullable(), // ✅ cho phép không gửi
+    })
+  )
+  .mutation(({ input }) => noteService.createNote(input)),
 
     //  List notes
     listByTeam: t.procedure
@@ -40,6 +42,11 @@ getById: t.procedure
   .input(z.object({ noteId: z.string(), viewerId: z.string().optional() }))
   .query(async ({ input }) => {
     return noteService.getById(input.noteId, input.viewerId || null);
+  }),
+listForSidebar: t.procedure
+  .input(z.object({ userId: z.string() }))
+  .query(async ({ input }) => {
+    return noteService.findForSidebar(input.userId);
   }),
 
 

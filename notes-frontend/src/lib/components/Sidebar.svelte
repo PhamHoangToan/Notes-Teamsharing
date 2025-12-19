@@ -2,25 +2,32 @@
   import { trpc } from "$lib/trpc/client";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { get } from "svelte/store";
+  import { get as getStore } from "svelte/store";
+
   import { currentNote } from "$lib/stores/noteStore";
   import { settingsModalOpen } from "$lib/stores/settingsModal";
 
   import NotificationBell from "$lib/components/NotificationBell.svelte";
   import CreateTeamModal from "./CreateTeamModal.svelte";
 
-  // ====================== STATE ======================
+  import { sidebarNotes, setSidebarNotes, upsertSidebarNote } from "$lib/stores/sidebarNotes";
+
   let openCreateTeamModal = false;
   let menuOpen = false;
   let userMenuOpen = false;
 
   let user: any = null;
-  let notes: any[] = [];
   let teams: any[] = [];
   let loadingNotes = true;
   let loadingTeams = true;
 
-  // ====================== LIFECYCLE ======================
+ 
+  $: personal = $sidebarNotes.filter((n) => n.teamId == null);
+
+  function notesByTeam(list: any[], teamId: string) {
+    return list.filter((n) => String(n.teamId) === String(teamId));
+  }
+
   onMount(async () => {
     const stored = localStorage.getItem("user");
     if (stored) user = JSON.parse(stored);
@@ -31,7 +38,9 @@
     }
 
     try {
-      notes = await trpc.note.list.query({ userId: user.id });
+      const fetchedNotes = await trpc.note.listForSidebar.query({ userId: user.id });
+      setSidebarNotes(fetchedNotes);
+      console.log("[Sidebar] Loaded notes =", fetchedNotes.length);
     } catch (err) {
       console.error("[Sidebar] Load notes error:", err);
     } finally {
@@ -54,17 +63,19 @@
     return () => window.removeEventListener("click", closeMenu);
   });
 
-  // ====================== LOGOUT ======================
   const handleLogout = () => {
     localStorage.removeItem("user");
     goto("/login");
   };
 
-  // ====================== CREATE NOTE ======================
   const createNote = async () => {
+    console.log(" [AddNote] Click Add Note");
+
     try {
-      const note = get(currentNote);
-      if (note.initialized && note.id) {
+      const note = getStore(currentNote);
+
+      // lưu note hiện tại nếu có
+      if (note?.initialized && note?.id) {
         await trpc.note.update.mutate({
           noteId: note.id,
           title: note.title?.trim() || "Untitled",
@@ -72,6 +83,7 @@
         });
       }
 
+      // tạo note mới (nhớ truyền teamId nếu backend bắt buộc)
       const newNote = await trpc.note.create.mutate({
         title: "Untitled",
         teamId: "default-team-id",
@@ -79,23 +91,20 @@
         content: "Welcome to Notejoy",
       });
 
-      notes = [newNote, ...notes];
+      upsertSidebarNote(newNote); 
       menuOpen = false;
 
-      const id = newNote._id || newNote.id;
+      const id = newNote?._id || newNote?.id;
       if (id) goto(`/note/${id}`);
     } catch (err) {
-      console.error("[createNote] Error:", err);
+      console.error("🔴 [AddNote] ERROR:", err);
     }
   };
 </script>
 
 <!-- ====================== SIDEBAR ====================== -->
-<aside
-  class="w-64 h-screen flex flex-col justify-between transition-colors duration-300"
-  style="background-color: var(--sidebar-bg); color: var(--sidebar-text-color);"
->
-  <!-- ================= TOP ================= -->
+<div class="h-full w-full flex flex-col transition-colors duration-300">
+
   <div>
     <div class="flex items-center justify-between p-4">
       <h1 class="text-xl font-semibold">notejoy</h1>
@@ -137,49 +146,74 @@
       />
     </div>
 
-    <!-- ================= NAV ================= -->
-    <nav class="mt-5 px-4 space-y-1 text-sm flex-1 overflow-y-auto pr-2">
-      <a class="flex items-center gap-2 p-2 rounded hover:bg-gray-700">
+    <!-- NAV -->
+    <nav class="mt-5 px-4 space-y-1 text-sm flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-2">
+
+      <div class="flex items-center gap-2 p-2 rounded hover:bg-gray-700">
         <i class="bi bi-star-fill text-yellow-400"></i> Starred
-      </a>
+      </div>
 
-      <a class="flex items-center gap-2 p-2 rounded hover:bg-gray-700" on:click={() => goto("/history")}>
+      <div class="flex items-center gap-2 p-2 rounded hover:bg-gray-700" on:click={() => goto("/history")}>
         <i class="bi bi-clock"></i> Recent
-      </a>
+      </div>
 
-      <!-- ================= LIBRARIES ================= -->
+      <!-- LIBRARIES -->
       <div class="mt-4">
         <p class="text-gray-400 uppercase text-xs mb-1">Libraries</p>
 
-        <div class="flex items-center gap-2 p-2 rounded hover:bg-gray-700">
-          <i class="bi bi-folder"></i>
-          {user?.username || "My Library"}
-        </div>
+        {#if loadingNotes || loadingTeams}
+          <p class="text-xs text-gray-500 ml-3">Loading...</p>
+        {:else}
+          <!-- PERSONAL -->
+          <div class="flex items-center gap-2 p-2 rounded hover:bg-gray-700">
+            <i class="bi bi-folder"></i>
+            {user?.username || "My Library"}
+          </div>
 
-        <div class="ml-6">
-          {#if loadingNotes}
-            <p class="text-xs text-gray-500 ml-3">Loading notes...</p>
-          {:else}
-            {#each notes as note}
-              <a
-                class="flex items-center gap-2 p-2 rounded hover:bg-gray-700 ml-3"
+          <div class="ml-6">
+            {#each personal as note (note._id || note.id)}
+              <button
+                type="button"
+                class="w-full text-left flex items-center gap-2 p-2 rounded hover:bg-gray-700 ml-3"
                 on:click={() => goto(`/note/${note._id || note.id}`)}
               >
                 <i class="bi bi-file-earmark-text"></i>
                 {note.title || "Untitled"}
-              </a>
+              </button>
             {/each}
-          {/if}
-        </div>
 
-        {#if !loadingTeams}
-          {#each teams as team}
+            {#if personal.length === 0}
+              <p class="text-xs text-gray-500 ml-3">No personal notes</p>
+            {/if}
+          </div>
+
+          <!-- TEAMS -->
+          {#each teams as team (team._id)}
             <div
-              class="flex items-center gap-2 p-2 rounded hover:bg-gray-700 mt-1"
+              class="flex items-center gap-2 p-2 rounded hover:bg-gray-700 mt-3 font-semibold"
               on:click={() => goto(`/team/${team._id}`)}
             >
               <i class="bi bi-folder2-open"></i>
               {team.name}
+            </div>
+
+            {@const teamNotes = notesByTeam($sidebarNotes, team._id)}
+
+            <div class="ml-6">
+              {#each teamNotes as note (note._id || note.id)}
+                <button
+                  type="button"
+                  class="w-full text-left flex items-center gap-2 p-2 rounded hover:bg-gray-700 ml-3"
+                  on:click={() => goto(`/note/${note._id || note.id}`)}
+                >
+                  <i class="bi bi-file-earmark-text"></i>
+                  {note.title || "Untitled"}
+                </button>
+              {/each}
+
+              {#if teamNotes.length === 0}
+                <p class="text-xs text-gray-500 ml-3">No team notes</p>
+              {/if}
             </div>
           {/each}
         {/if}
@@ -187,15 +221,12 @@
     </nav>
   </div>
 
-  <!-- ================= USER MENU ================= -->
+  <!-- USER MENU -->
   <div
     class="relative border-t border-gray-700 p-4 flex items-center gap-3 cursor-pointer"
     on:click|stopPropagation={() => (userMenuOpen = !userMenuOpen)}
   >
-    <img
-      src={user?.avatarUrl || "https://i.pravatar.cc/40"}
-      class="w-10 h-10 rounded-full object-cover"
-    />
+    <img src={user?.avatarUrl || "https://i.pravatar.cc/40"} class="w-10 h-10 rounded-full object-cover" />
 
     <div class="flex-1">
       <p class="font-semibold text-sm">{user?.username}</p>
@@ -208,22 +239,16 @@
           My Profile
         </button>
 
-        <button
-          class="block w-full px-4 py-2 text-left hover:bg-gray-100"
-          on:click={() => settingsModalOpen.set(true)}
-        >
+        <button class="block w-full px-4 py-2 text-left hover:bg-gray-100" on:click={() => settingsModalOpen.set(true)}>
           Settings
         </button>
 
         <div class="border-t"></div>
 
-        <button
-          class="block w-full px-4 py-2 text-left hover:bg-gray-100 text-red-600"
-          on:click={handleLogout}
-        >
+        <button class="block w-full px-4 py-2 text-left hover:bg-gray-100 text-red-600" on:click={handleLogout}>
           Logout
         </button>
       </div>
     {/if}
   </div>
-</aside>
+</div>

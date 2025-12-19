@@ -23,20 +23,23 @@ export class NoteService {
 
   //  Create new note
  async createNote(data: Partial<Note>) {
-  const note = await this.noteModel.create({
+  const payload: any = {
     title: data.title || "Untitled",
     content: data.content || "",
-    ownerId: data.ownerId,             
-    teamId: data.teamId || null,        
+    ownerId: data.ownerId,
     mentions: [],
     collaborators: [],
     isPinned: false,
     isArchived: false,
     createdAt: new Date(),
     updatedAt: new Date(),
-  });
+  };
 
-  this.logger.log(` Created note ${note._id} (teamId=${note.teamId || "personal"})`);
+  if (data.teamId) payload.teamId = data.teamId;
+
+  const note = await this.noteModel.create(payload);
+
+  this.logger.log(` Created note ${note._id} teamId=${note.teamId ?? "personal"}`);
   return note;
 }
 
@@ -149,7 +152,7 @@ async addCollaborator(noteId: string, userEmail: string, role: 'editor' | 'viewe
   const text = ydoc.getText('content');
   const newContent = text ? text.toString() : '';
 
-  // 🚫 Nếu nội dung giống nhau → bỏ qua hoàn toàn
+  //  Nếu nội dung giống nhau → bỏ qua hoàn toàn
   if (oldContent.trim() === newContent.trim()) {
     this.logger.verbose(`[NoteService.saveSnapshot] Nội dung không thay đổi → bỏ qua lưu history (noteId=${noteId}).`);
     return { success: false, message: "No content changes" };
@@ -174,6 +177,54 @@ async addCollaborator(noteId: string, userEmail: string, role: 'editor' | 'viewe
 
   this.logger.log(` [NoteService.saveSnapshot] Lưu snapshot cho note ${noteId}`);
   return { success: true };
+}
+async findForSidebar(userId: string) {
+  this.logger.log(`🟡 [findForSidebar] userId=${userId}`);
+
+  // 1) Lấy teamIds
+  const teams = await this.teamService.findByMember(userId);
+  const teamIds = teams.map((t: any) => t._id?.toString());
+  this.logger.log(
+    `🟡 [findForSidebar] teams=${teams.length}, teamIds=${JSON.stringify(teamIds)}`
+  );
+
+  // 2) Debug: kiểm tra note cá nhân có tồn tại trong DB không
+  const personalCount = await this.noteModel.countDocuments({
+    ownerId: userId,
+    $or: [{ teamId: { $exists: false } }, { teamId: null }],
+  });
+  this.logger.log(`🟣 [findForSidebar] personalCount=${personalCount}`);
+
+  // 3) Debug: kiểm tra note team có tồn tại không
+  const teamCount = await this.noteModel.countDocuments({
+    teamId: { $in: teamIds },
+  });
+  this.logger.log(`🔵 [findForSidebar] teamCount=${teamCount}`);
+
+  // 4) Query chính
+  const result = await this.noteModel
+    .find({
+      $or: [
+        {
+          ownerId: userId,
+          $or: [{ teamId: { $exists: false } }, { teamId: null }],
+        },
+        { teamId: { $in: teamIds } },
+      ],
+    })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  this.logger.log(`🟢 [findForSidebar] resultCount=${result.length}`);
+
+  // 5) In vài record đầu để xem teamId thực tế là gì
+  result.slice(0, 10).forEach((n: any, i: number) => {
+    this.logger.log(
+      `   ├─ [${i}] noteId=${n._id} title="${n.title}" ownerId=${n.ownerId} teamId=${n.teamId}`
+    );
+  });
+
+  return result;
 }
 
  async getHistoryByNoteId(noteId: string) {
